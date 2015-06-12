@@ -1,0 +1,1 @@
+A proposta do jogo Electronics vs Zombies seria fazer uma versão alternativa do famoso game Plants vs Zombies, tendo como foco ser um jogo educativo que ensina e caracteriza, de maneira divertida, como são alguns componentes eletrônicos, estudados e utilizados com bastante frequência em nosso curso.
