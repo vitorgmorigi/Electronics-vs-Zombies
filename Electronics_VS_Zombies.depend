@@ -231,9 +231,10 @@
 1372628331 c:\allegro\include\allegro5\allegro_primitives.h
 	<allegro5/allegro.h>
 
-1434070878 source:c:\users\vítor\documents\eletronica 7 fase\programação em c\projeto programaÇÃo\electronics-vs-zombies\main.cpp
+1434308344 source:c:\users\vítor\documents\eletronica 7 fase\programação em c\projeto programaÇÃo\electronics-vs-zombies\main.cpp
 	<allegro5\allegro.h>
 	<allegro5\allegro_primitives.h>
+	"objects.h"
 
 1433124983 c:\users\vítor\desktop\allegro5\include\allegro5\allegro.h
 	"allegro5/base.h"
@@ -462,4 +463,6 @@
 
 1433124983 c:\users\vítor\desktop\allegro5\include\allegro5\allegro_primitives.h
 	<allegro5/allegro.h>
+
+1434308397 c:\users\vítor\documents\eletronica 7 fase\programação em c\projeto programaÇÃo\electronics-vs-zombies\objects.h
 

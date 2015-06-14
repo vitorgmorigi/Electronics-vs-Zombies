@@ -16,7 +16,9 @@
 					<Add directory="C:/allegro/include" />
 				</Compiler>
 				<Linker>
-					<Add library="C:\allegro\lib\liballegro-5.0.10-monolith-mt.a" />
+					<Add library="C:\Users\Vítor\Desktop\allegro5\lib\liballegro-5.0.10-monolith-mt-debug.a" />
+					<Add library="C:\Users\Vítor\Desktop\allegro5\lib\liballegro-5.0.10-monolith-mt.a" />
+					<Add directory="C:/Users/Vítor/Desktop/allegro5/lib" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -35,7 +37,12 @@
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
+			<Add directory="C:/Users/Vítor/Desktop/allegro5/include" />
 		</Compiler>
+		<Linker>
+			<Add library="C:\Users\Vítor\Desktop\allegro5\lib\liballegro-5.0.10-monolith-mt.a" />
+			<Add directory="C:/Users/Vítor/Desktop/allegro5/lib" />
+		</Linker>
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<code_completion />
