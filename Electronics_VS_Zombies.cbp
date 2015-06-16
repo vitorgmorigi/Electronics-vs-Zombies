@@ -44,6 +44,7 @@
 			<Add directory="C:/Users/Vítor/Desktop/allegro5/lib" />
 		</Linker>
 		<Unit filename="main.cpp" />
+		<Unit filename="objects.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

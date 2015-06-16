@@ -1,22 +1,46 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_primitives.h>
 #include "objects.h"
+
 // VARIAVEIS GLOBAIS
 const int WIDTH = 640; //Resolução Y
 const int HEIGHT = 480; //Resolução X
-enum KEYS{ UP, DOWN, LEFT, RIGHT}; //Introduz as teclas primitivas do teclado;
+enum KEYS{ UP, DOWN, LEFT, RIGHT}; //Introduz as teclas primitivas do teclado
+const int FPS = 60;
+const int NUM_ZOMBIES = 7;
+const int LINHA_MAX = 5;
+const int COL_MAX = 9;
+
+int mapa[5][9] =
+{
+{0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,0},
+};
+
+
+// PROTOTIPOS
+void InitZombie (Zombies *zombie, int tamanho);
+void DrawZombie (Zombies *zombie, int tamanho);
+void StartZombie(Zombies *zombie, int tamanho);
+void UpdateZombie(Zombies *zombie, int tamanho);
 
 
 int main(void)
 {
-
+    // VARIAVEIS PRIMITIVAS
 	bool done = false; //Variavel booleana para identificar se o programa terminou de ser executado
 	bool redraw = true; //Enquanto essa variavel for verdadeira, ira ser desenhado algo na tela
 
-	int pos_x = 0;
-	int pos_y = HEIGHT / 2;
 
-	int FPS = 60;
+	// STRUCTS DOS OBJETOS
+	Zombies zombie[NUM_ZOMBIES];
+
+
 
 	bool keys[4] ={false,false,false,false};
 
@@ -25,19 +49,27 @@ int main(void)
 	ALLEGRO_TIMER *timer = NULL;
 
 	if(!al_init()) //Inicializa o Allegro
-		return -1;
+    {
+    printf("Erro ao iniciar o Allegro");
+    return -1;
+    }
 
 	display = al_create_display(WIDTH, HEIGHT);//Cria o display
 
 	if(!display)//Testa o display
-		return -1;
-
+    {
+    printf("Erro ao iniciar o display");
+    return -1;
+    }
 	al_init_primitives_addon(); //Introduz os comandos primitivos(figuras geometricas) do Allegro
 	al_install_mouse(); // Introduz o comando do mouse
 	al_install_keyboard(); //Introduz o comando de teclas
 
 	event_queue = al_create_event_queue();
 	timer = al_create_timer(0.20 / FPS); // Define o tempo de atualizaçao do timer
+
+	srand(time(NULL));
+	InitZombie(zombie, NUM_ZOMBIES);
 
 	al_register_event_source(event_queue, al_get_keyboard_event_source());
 	al_register_event_source(event_queue, al_get_display_event_source(display));
@@ -53,14 +85,14 @@ int main(void)
 
 		if(ev.type == ALLEGRO_EVENT_TIMER)
             {
-                pos_x += 1;
                 redraw=true;
+                StartZombie(zombie, NUM_ZOMBIES);
+                UpdateZombie(zombie, NUM_ZOMBIES);
             }
 
         else if(ev.type == ALLEGRO_EVENT_MOUSE_AXES)
         {
-            pos_x = ev.mouse.x;
-            pos_y = ev.mouse.y;
+
         }
 
         else if(ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
@@ -115,15 +147,10 @@ int main(void)
         if(redraw && al_is_event_queue_empty(event_queue)) // Se nenhum evento de teclado ou mouse ocorrer acontecerá isso
         {
         redraw=false;
+        DrawZombie(zombie, NUM_ZOMBIES);
+        al_flip_display();
+        al_clear_to_color(al_map_rgb(0,0,0));
 
-        // Quadrados que representam os tiros
-        al_draw_filled_rectangle(pos_x, pos_y-170, pos_x+30, pos_y-200, al_map_rgb(255,255,0));
-        al_draw_filled_rectangle(pos_x, pos_y-70, pos_x+30, pos_y-100, al_map_rgb(160,255,0));
-		al_draw_filled_rectangle(pos_x, pos_y, pos_x + 30, pos_y + 30, al_map_rgb(0,255,0));
-		al_draw_filled_rectangle(pos_x, pos_y+95, pos_x+30, pos_y+125, al_map_rgb(160,255,120));
-		al_draw_filled_rectangle(pos_x, pos_y+185, pos_x+30, pos_y+215, al_map_rgb(0,255,255));
-		al_flip_display();
-		al_clear_to_color(al_map_rgb(255,255,255));
         }
 	}
 
@@ -131,4 +158,59 @@ int main(void)
 	al_destroy_display(display); //Fecha o display
 
 	return 0;
+}
+
+void InitZombie (Zombies *zombie, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+        zombie[i].ID = ZOMBIES;
+        zombie[i].live = false;
+        zombie[i].speed = 0.05;
+        zombie[i].boundx = 10;
+        zombie[i].boundy = 10;
+    }
+}
+
+
+void DrawZombie (Zombies *zombie, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+        if(zombie[i].live)
+        {
+            al_draw_filled_circle(zombie[i].x, zombie[i].y, 20, al_map_rgb(255, 0, 0));
+            printf("desenho %d\n", i);
+        }
+    }
+}
+void StartZombie(Zombies *zombie, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+        if(!zombie[i].live)
+        {
+            if(rand() % 500 == 0)
+            {
+             zombie[i].live = true;
+             printf("vivo %d\n", i);
+             zombie[i].x = WIDTH;
+             zombie[i].y = 30 + rand() % (HEIGHT - 60);
+             break;
+            }
+        }
+    }
+}
+void UpdateZombie(Zombies *zombie, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+        if(zombie[i].live)
+        {
+         zombie[i].x -= zombie[i].speed;
+
+        if(zombie[i].x < 0)
+            zombie[i].live = false;
+        }
+    }
 }

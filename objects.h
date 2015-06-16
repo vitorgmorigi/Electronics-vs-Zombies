@@ -29,13 +29,13 @@ struct Tiros
 
 };
 
-struct ZOMBIES
+struct Zombies
 {
     int ID; // Tipo de objeto
-    int x; // Posiçao X
+    float x; // Posiçao X
     int y; // Posiçao Y
     bool live; // Define quando um novo Zombie surge
-    int speed; // Velocidade do Zombie
+    float speed; // Velocidade do Zombie
     int boundx; // Colisao X
     int boundy; // Colisao Y
 
