@@ -18,14 +18,14 @@ struct Electronics
 struct Tiros
 {
     int ID; // Tipo de objeto
-    int x; // Posiçao X
+    float x; // Posiçao X
     int y; // Posiçao Y
     bool live; // Define quando o tiro é acionado
     int PODER; // Tipo de poder do objeto
     int forca_tiro; // Força do tiro
     int boundx; // Colisao X
     int boundy; // Colisao Y
-    int speed; // Velocidade do tiro
+    float speed; // Velocidade do tiro
 
 };
 

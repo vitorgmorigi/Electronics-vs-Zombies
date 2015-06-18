@@ -7,7 +7,7 @@
 // VARIAVEIS GLOBAIS
 const int WIDTH = 640; //Resolução X
 const int HEIGHT = 480; //Resolução Y
-enum KEYS{ UP, DOWN, LEFT, RIGHT}; //Introduz as teclas primitivas do teclado
+enum KEYS{ UP, DOWN, LEFT, RIGHT, ONE}; //Introduz as teclas primitivas do teclado
 const int FPS = 60;
 const int NUM_ZOMBIES = 7;
 const int LINHA_MAX = 5;
@@ -33,6 +33,13 @@ void StartZombie(Zombies *zombie, int tamanho);
 void UpdateZombie(Zombies *zombie, int tamanho);
 
 void InitElectronic(Electronics &resistor);
+void DrawElectronic(Electronics &resistor);
+void StartElectronic(Electronics &resistor);
+
+void InitBullet(Tiros *tiro);
+void DrawBullet(Tiros *tiro);
+void FireBullet(Tiros *tiro);
+void UpdateBullet(Tiros *tiro);
 
 
 
@@ -46,6 +53,7 @@ int main(void)
 	// STRUCTS DOS OBJETOS
 	Zombies zombie[NUM_ZOMBIES];
 	Electronics resistor;
+	Tiros tiro;
 
 
 
@@ -77,6 +85,7 @@ int main(void)
 
 	srand(time(NULL));
 	InitZombie(zombie, NUM_ZOMBIES);
+	InitElectronic(resistor);
 
 	al_register_event_source(event_queue, al_get_keyboard_event_source());
 	al_register_event_source(event_queue, al_get_display_event_source(display));
@@ -111,6 +120,7 @@ int main(void)
 		{
 			switch(ev.keyboard.keycode)
 			{
+
 				case ALLEGRO_KEY_UP:
 					keys[UP] = true;
 					break;
@@ -123,12 +133,19 @@ int main(void)
 				case ALLEGRO_KEY_LEFT:
 					keys[LEFT] = true;
 					break;
+                 case ALLEGRO_KEY_1:
+                    keys[ONE] = true;
+                    break;
+                case ALLEGRO_KEY_PAD_1:
+                    keys[ONE] = true;
+                    break;
 			}
 		}
 		else if(ev.type == ALLEGRO_EVENT_KEY_UP)
 		{
 			switch(ev.keyboard.keycode)
 			{
+
 				case ALLEGRO_KEY_UP:
 					keys[UP] = false;
 					break;
@@ -141,9 +158,16 @@ int main(void)
 				case ALLEGRO_KEY_LEFT:
 					keys[LEFT] = false;
 					break;
+                case ALLEGRO_KEY_1:
+                    keys[ONE] = false;
+                    break;
+                case ALLEGRO_KEY_PAD_1:
+                    keys[ONE] = false;
+                    break;
                 case ALLEGRO_KEY_ESCAPE:
                     done = true;
                     break;
+
 		}
 		}
             else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
@@ -155,6 +179,7 @@ int main(void)
         {
         redraw=false;
         DrawZombie(zombie, NUM_ZOMBIES);
+        DrawElectronic(resistor);
         al_flip_display();
         al_clear_to_color(al_map_rgb(0,0,0));
 
@@ -173,7 +198,7 @@ void InitZombie (Zombies *zombie, int tamanho)
     {
         zombie[i].ID = ZOMBIES;
         zombie[i].live = false;
-        zombie[i].speed = 0.10;
+        zombie[i].speed = 0.50;
         zombie[i].boundx = 10;
         zombie[i].boundy = 10;
     }
@@ -221,4 +246,26 @@ void UpdateZombie(Zombies *zombie, int tamanho)
             zombie[i].live = false;
         }
     }
+}
+
+void InitElectronic(Electronics &resistor)
+{
+    resistor.ID = ELECTRONICS;
+    resistor.life = 100;
+    resistor.boundx = 50;
+    resistor.boundy = 50;
+}
+
+void DrawElectronic(Electronics &resistor)
+{
+    al_draw_filled_circle(65, 96-51, 20, al_map_rgb(0, 255, 0));
+    al_draw_filled_circle(65, 2*96-51, 20, al_map_rgb(0, 255, 0));
+    al_draw_filled_circle(65, 3*96-51, 20, al_map_rgb(0, 255, 0));
+    al_draw_filled_circle(65, 4*96-51, 20, al_map_rgb(0, 255, 0));
+    al_draw_filled_circle(65, 5*96-51, 20, al_map_rgb(0, 255, 0));
+}
+
+void StartElectronic(Electronics &resistor)
+{
+
 }
