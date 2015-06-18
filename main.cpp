@@ -5,21 +5,24 @@
 #include "objects.h"
 
 // VARIAVEIS GLOBAIS
-const int WIDTH = 640; //Resolução Y
-const int HEIGHT = 480; //Resolução X
+const int WIDTH = 640; //Resolução X
+const int HEIGHT = 480; //Resolução Y
 enum KEYS{ UP, DOWN, LEFT, RIGHT}; //Introduz as teclas primitivas do teclado
 const int FPS = 60;
 const int NUM_ZOMBIES = 7;
 const int LINHA_MAX = 5;
 const int COL_MAX = 9;
+const int WIDTH_PIXEL = WIDTH / LINHA_MAX; // Resoluçao X do pixel
+const int HEIGHT_PIXEL = HEIGHT / COL_MAX; // Resoluçao Y do pixel
+
 
 int mapa[5][9] =
 {
-{0,0,0,0,0,0,0,0,0},
-{0,0,0,0,0,0,0,0,0},
-{0,0,0,0,0,0,0,0,0},
-{0,0,0,0,0,0,0,0,0},
-{0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,1},
+{0,0,0,0,0,0,0,0,1},
+{0,0,0,0,0,0,0,0,1},
+{0,0,0,0,0,0,0,0,1},
+{0,0,0,0,0,0,0,0,1},
 };
 
 
@@ -28,6 +31,9 @@ void InitZombie (Zombies *zombie, int tamanho);
 void DrawZombie (Zombies *zombie, int tamanho);
 void StartZombie(Zombies *zombie, int tamanho);
 void UpdateZombie(Zombies *zombie, int tamanho);
+
+void InitElectronic(Electronics &resistor);
+
 
 
 int main(void)
@@ -39,6 +45,7 @@ int main(void)
 
 	// STRUCTS DOS OBJETOS
 	Zombies zombie[NUM_ZOMBIES];
+	Electronics resistor;
 
 
 
@@ -109,7 +116,7 @@ int main(void)
 					break;
 				case ALLEGRO_KEY_DOWN:
 					keys[DOWN] = true;
-					break;
+					break;if(ev.type == ALLEGRO_EVENT_TIMER)
 				case ALLEGRO_KEY_RIGHT:
 					keys[RIGHT] = true;
                     break;
@@ -166,7 +173,7 @@ void InitZombie (Zombies *zombie, int tamanho)
     {
         zombie[i].ID = ZOMBIES;
         zombie[i].live = false;
-        zombie[i].speed = 0.05;
+        zombie[i].speed = 0.10;
         zombie[i].boundx = 10;
         zombie[i].boundy = 10;
     }
@@ -195,12 +202,13 @@ void StartZombie(Zombies *zombie, int tamanho)
              zombie[i].live = true;
              printf("vivo %d\n", i);
              zombie[i].x = WIDTH;
-             zombie[i].y = 30 + rand() % (HEIGHT - 60);
-             break;
+             zombie[i].y = 45 + 96 * rand() % (HEIGHT);
             }
+                break;
         }
     }
 }
+
 void UpdateZombie(Zombies *zombie, int tamanho)
 {
     for(int i = 0; i < tamanho; i++)
