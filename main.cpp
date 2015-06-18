@@ -61,7 +61,7 @@ int main(void)
     return -1;
     }
 
-	display = al_create_display(WIDTH, HEIGHT);//Cria o display
+	display = al_create_display(WIDTH, HEIGHT);//Cria o display -
 
 	if(!display)//Testa o display
     {
