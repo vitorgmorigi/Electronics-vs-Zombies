@@ -10,6 +10,7 @@ const int HEIGHT = 480; //Resolução Y
 enum KEYS{ UP, DOWN, LEFT, RIGHT, ONE}; //Introduz as teclas primitivas do teclado
 const int FPS = 60;
 const int NUM_ZOMBIES = 7;
+const int NUM_ENERGIA = 4;
 const int LINHA_MAX = 5;
 const int COL_MAX = 9;
 const int WIDTH_PIXEL = WIDTH / LINHA_MAX; // Resoluçao X do pixel
@@ -41,6 +42,12 @@ void DrawBullet(Tiros *tiro);
 void FireBullet(Tiros *tiro);
 void UpdateBullet(Tiros *tiro);
 
+void InitEnergia (Energia *energia, int tamanho);
+void DrawEnergia (Energia *energia, int tamanho);
+void StartEnergia(Energia *energia, int tamanho);
+void UpdateEnergia(Energia *energia, int tamanho);
+void PegaEnergia(Energia *energia);
+
 
 
 int main(void)
@@ -54,6 +61,7 @@ int main(void)
 	Zombies zombie[NUM_ZOMBIES];
 	Electronics resistor;
 	Tiros tiro;
+	Energia energia[NUM_ENERGIA];
 
 
 
@@ -86,6 +94,7 @@ int main(void)
 	srand(time(NULL));
 	InitZombie(zombie, NUM_ZOMBIES);
 	InitElectronic(resistor);
+	InitEnergia(energia, NUM_ENERGIA);
 
 	al_register_event_source(event_queue, al_get_keyboard_event_source());
 	al_register_event_source(event_queue, al_get_display_event_source(display));
@@ -104,10 +113,13 @@ int main(void)
                 redraw=true;
                 StartZombie(zombie, NUM_ZOMBIES);
                 UpdateZombie(zombie, NUM_ZOMBIES);
+                StartEnergia(energia, NUM_ENERGIA);
+                UpdateEnergia(energia, NUM_ENERGIA);
             }
 
         else if(ev.type == ALLEGRO_EVENT_MOUSE_AXES)
         {
+
 
         }
 
@@ -179,6 +191,7 @@ int main(void)
         {
         redraw=false;
         DrawZombie(zombie, NUM_ZOMBIES);
+        DrawEnergia(energia, NUM_ENERGIA);
         DrawElectronic(resistor);
         al_flip_display();
         al_clear_to_color(al_map_rgb(0,0,0));
@@ -198,7 +211,7 @@ void InitZombie (Zombies *zombie, int tamanho)
     {
         zombie[i].ID = ZOMBIES;
         zombie[i].live = false;
-        zombie[i].speed = 0.50;
+        zombie[i].speed = 0.10;
         zombie[i].boundx = 10;
         zombie[i].boundy = 10;
     }
@@ -212,7 +225,7 @@ void DrawZombie (Zombies *zombie, int tamanho)
         if(zombie[i].live)
         {
             al_draw_filled_circle(zombie[i].x, zombie[i].y, 20, al_map_rgb(255, 0, 0));
-            printf("desenho %d\n", i);
+
         }
     }
 }
@@ -269,3 +282,60 @@ void StartElectronic(Electronics &resistor)
 {
 
 }
+
+void InitEnergia (Energia *energia, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+    energia[i].ID = ENERGIA;
+    energia[i].live = false;
+    energia[i].speed = 0.1;
+    }
+}
+
+void DrawEnergia (Energia *energia, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+    al_draw_filled_circle(energia[i].x, energia[i].y, 5, al_map_rgb(255, 255, 255));
+    printf("desenho %d\n", i);
+    }
+}
+
+void StartEnergia(Energia *energia, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+        if(!energia[i].live)
+        {
+            if(rand() % 10000 == 0) // Gera um atraso pra nascer uma nova energia
+            {
+            energia[i].live = true;
+            energia[i].x = rand() % (WIDTH);
+            energia[i].y = 0;
+            printf("criou %d\n",i);
+            }
+        }
+    }
+}
+
+void UpdateEnergia(Energia *energia, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+        if(energia[i].live)
+        {
+            energia[i].y += energia[i].speed;
+            printf("atualizou %d %.2f\n",i, energia[i].y);
+        }
+
+        if(energia[i].y > HEIGHT)
+        {
+            energia[i].y = HEIGHT;
+            energia[i].live = false;
+        }
+    }
+}
+
+
+

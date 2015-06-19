@@ -1,5 +1,5 @@
 // Objetos IDS
-enum IDS{ELECTRONICS, BULLETS, ZOMBIES};
+enum IDS{ELECTRONICS, BULLETS, ZOMBIES, ENERGIA};
 
 // Tipos de poderes
 enum PODERES{CALOR, MAGNETISMO, ELETRONS, LUZ, ROTACAO, BARREIRA, AMPLIFICACAO, ARMAZENAMENTO, REDIRECIONAMENTO};
@@ -39,4 +39,13 @@ struct Zombies
     int boundx; // Colisao X
     int boundy; // Colisao Y
 
+};
+
+struct Energia
+{
+    int ID;
+    float x;
+    float y;
+    bool live;
+    float speed;
 };
