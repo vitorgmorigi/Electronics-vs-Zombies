@@ -39,14 +39,14 @@ void StartElectronic(Electronics &resistor);
 
 void InitBullet(Tiros *tiro);
 void DrawBullet(Tiros *tiro);
-void FireBullet(Tiros *tiro);
+void FireBullet(Tiros *tiro, Zombies *zombie, int tamanho);
 void UpdateBullet(Tiros *tiro);
 
 void InitEnergia (Energia *energia, int tamanho);
 void DrawEnergia (Energia *energia, int tamanho);
 void StartEnergia(Energia *energia, int tamanho);
 void UpdateEnergia(Energia *energia, int tamanho);
-void PegaEnergia(Energia *energia);
+void PegaEnergia(Energia *energia, float mouse_x, float mouse_y);
 
 
 
@@ -56,13 +56,11 @@ int main(void)
 	bool done = false; //Variavel booleana para identificar se o programa terminou de ser executado
 	bool redraw = true; //Enquanto essa variavel for verdadeira, ira ser desenhado algo na tela
 
-
 	// STRUCTS DOS OBJETOS
 	Zombies zombie[NUM_ZOMBIES];
 	Electronics resistor;
-	Tiros tiro;
+	Tiros tiro[6];
 	Energia energia[NUM_ENERGIA];
-
 
 
 	bool keys[4] ={false,false,false,false};
@@ -95,6 +93,7 @@ int main(void)
 	InitZombie(zombie, NUM_ZOMBIES);
 	InitElectronic(resistor);
 	InitEnergia(energia, NUM_ENERGIA);
+	InitBullet(tiro);
 
 	al_register_event_source(event_queue, al_get_keyboard_event_source());
 	al_register_event_source(event_queue, al_get_display_event_source(display));
@@ -102,7 +101,7 @@ int main(void)
 	al_register_event_source(event_queue, al_get_timer_event_source(timer));
 
     al_start_timer(timer); // Inicia o timer
-    al_hide_mouse_cursor(display); // Faz o cursor do mouse não aparecer no display
+    // Faz o cursor do mouse não aparecer no display
 	while(!done)
 	{
 		ALLEGRO_EVENT ev;
@@ -115,12 +114,13 @@ int main(void)
                 UpdateZombie(zombie, NUM_ZOMBIES);
                 StartEnergia(energia, NUM_ENERGIA);
                 UpdateEnergia(energia, NUM_ENERGIA);
+                FireBullet(tiro, zombie, NUM_ZOMBIES);
+                UpdateBullet(tiro);
             }
 
         else if(ev.type == ALLEGRO_EVENT_MOUSE_AXES)
         {
-
-
+            PegaEnergia(energia, ev.mouse.x, ev.mouse.y);
         }
 
         else if(ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
@@ -193,6 +193,7 @@ int main(void)
         DrawZombie(zombie, NUM_ZOMBIES);
         DrawEnergia(energia, NUM_ENERGIA);
         DrawElectronic(resistor);
+        DrawBullet(tiro);
         al_flip_display();
         al_clear_to_color(al_map_rgb(0,0,0));
 
@@ -258,6 +259,67 @@ void UpdateZombie(Zombies *zombie, int tamanho)
         if(zombie[i].x < 0)
             zombie[i].live = false;
         }
+    }
+}
+
+void InitBullet(Tiros *tiro)
+{
+    for(int k = 0; k < 6; k++)
+    {
+    tiro[k].ID = BULLETS;
+    tiro[k].live = false;
+    tiro[k].PODER = CALOR;
+    tiro[k].forca_tiro = 10;
+    tiro[k].boundx = 10;
+    tiro[k].boundy = 10;
+    tiro[k].speed = 0.1;
+    }
+}
+
+void DrawBullet(Tiros *tiro)
+{
+    for(int k = 0; k < 6; k++)
+    {
+    al_draw_filled_circle(tiro[k].x, tiro[k].y, 5, al_map_rgb(147, 35, 95));
+    }
+}
+
+void FireBullet(Tiros *tiro, Zombies *zombie, int tamanho)
+{
+
+
+for (int i = 0; i < tamanho; i++)
+{
+    if(zombie[i].live)
+    {
+    if(!tiro[i].live)
+        {
+            tiro[i].live = true;
+            tiro[i].x = 65;
+            tiro[i].y = zombie[i].y;
+        }
+    }
+
+}
+}
+
+
+void UpdateBullet(Tiros *tiro)
+{
+    for(int k = 0; k < 6; k++)
+    {
+
+
+    if(tiro[k].live)
+        {
+            tiro[k].x += tiro[k].speed;
+
+        }
+    if(tiro[k].x > WIDTH)
+    {
+        tiro[k].live = false;
+        tiro[k].x = 65;
+    }
     }
 }
 
@@ -332,6 +394,16 @@ void UpdateEnergia(Energia *energia, int tamanho)
         if(energia[i].y > HEIGHT)
         {
             energia[i].y = HEIGHT;
+            energia[i].live = false;
+        }
+    }
+}
+void PegaEnergia(Energia *energia, float mouse_x, float mouse_y)
+{
+    for(int i = 0; i < 3; i++)
+    {
+    if(mouse_x == energia[i].x && mouse_y == energia[i].y)
+        {
             energia[i].live = false;
         }
     }
