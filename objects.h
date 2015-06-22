@@ -5,16 +5,6 @@ enum IDS{ELECTRONICS, BULLETS, ZOMBIES, ENERGIA};
 enum PODERES{CALOR, MAGNETISMO, ELETRONS, LUZ, ROTACAO, BARREIRA, AMPLIFICACAO, ARMAZENAMENTO, REDIRECIONAMENTO};
 
 
-struct Electronics
-{
-    int ID; // Tipo de objeto
-    int x; // Posiçao X
-    int y; // Posiçao Y
-    int life; // Vida do objeto
-    int boundx; //Colisao X
-    int boundy; // Colisao Y
-};
-
 struct Tiros
 {
     int ID; // Tipo de objeto
@@ -29,6 +19,17 @@ struct Tiros
 
 };
 
+struct Electronics
+{
+    int ID; // Tipo de objeto
+    int x; // Posiçao X
+    int y; // Posiçao Y
+    int life; // Vida do objeto
+    int boundx; //Colisao X
+    int boundy; // Colisao Y
+    struct Tiros tiro;
+};
+
 struct Zombies
 {
     int ID; // Tipo de objeto
@@ -36,7 +37,7 @@ struct Zombies
     int y; // Posiçao Y
     bool live; // Define quando um novo Zombie surge
     float speed; // Velocidade do Zombie
-    int boundx; // Colisao X
+    float boundx; // Colisao X
     int boundy; // Colisao Y
 
 };
@@ -48,4 +49,6 @@ struct Energia
     float y;
     bool live;
     float speed;
+    float boundx;
+    float boundy;
 };
