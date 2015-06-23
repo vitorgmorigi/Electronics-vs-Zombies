@@ -10,13 +10,13 @@ const int HEIGHT = 480; //Resolução Y
 enum KEYS { UP, DOWN, LEFT, RIGHT, ONE}; //Introduz as teclas primitivas do teclado
 const int FPS = 60;
 const int NUM_ZOMBIES = 7;
-const int NUM_TIROS = 15;
+const int NUM_TIROS = 30;
 const int NUM_ENERGIA = 4;
 const int LINHA_MAX = 5;
 const int COL_MAX = 9;
 const int WIDTH_PIXEL = WIDTH / LINHA_MAX; // Resoluçao X do pixel
 const int HEIGHT_PIXEL = HEIGHT / COL_MAX; // Resoluçao Y do pixel
-
+int timer2;
 
 int mapa[5][9] =
 {
@@ -43,11 +43,14 @@ void DrawBullet(Tiros *tiro, int tamanho);
 void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros);
 void UpdateBullet(Tiros *tiro, int tamanho);
 
+void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies);
+
+
 void InitEnergia (Energia *energia, int tamanho);
 void DrawEnergia (Energia *energia, int tamanho);
 void StartEnergia(Energia *energia, int tamanho);
 void UpdateEnergia(Energia *energia, int tamanho);
-void PegaEnergia(Energia *energia, float mouse_x, float mouse_y);
+void PegaEnergia(Energia *energia, float mouse_x, float mouse_y, int numero_energia);
 
 int TemZombie(Zombies *zombie, int tamanho);
 
@@ -58,6 +61,8 @@ int main(void)
     // VARIAVEIS PRIMITIVAS
     bool done = false; //Variavel booleana para identificar se o programa terminou de ser executado
     bool redraw = true; //Enquanto essa variavel for verdadeira, ira ser desenhado algo na tela
+
+
 
     // STRUCTS DOS OBJETOS
     Zombies zombie[NUM_ZOMBIES];
@@ -117,13 +122,21 @@ int main(void)
             UpdateZombie(zombie, NUM_ZOMBIES);
             StartEnergia(energia, NUM_ENERGIA);
             UpdateEnergia(energia, NUM_ENERGIA);
-            FireBullet(tiro, zombie, NUM_TIROS);
             UpdateBullet(tiro, NUM_ZOMBIES);
+            ColisaoBulletZombie(zombie, tiro, NUM_ZOMBIES);
+            timer2++;
+
+                if(timer2 >= 120) // faz os Electronics atirarem numa velocidade constante
+                {
+                    FireBullet(tiro, zombie, NUM_TIROS);
+                    timer2 = 0;
+                }
+
         }
 
         else if(ev.type == ALLEGRO_EVENT_MOUSE_AXES)
         {
-            PegaEnergia(energia, ev.mouse.x, ev.mouse.y);
+            PegaEnergia(energia, ev.mouse.x, ev.mouse.y, NUM_ENERGIA);
         }
 
         else if(ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
@@ -219,6 +232,7 @@ void InitZombie (Zombies *zombie, int tamanho)
         zombie[i].speed = 0.10;
         zombie[i].boundx = 10;
         zombie[i].boundy = 10;
+        zombie[i].life = 100;
     }
 }
 
@@ -287,17 +301,19 @@ void InitBullet(Tiros *tiro, int tamanho)
         tiro[k].live = false;
         tiro[k].PODER = CALOR;
         tiro[k].forca_tiro = 10;
-        tiro[k].boundx = 10;
-        tiro[k].boundy = 10;
         tiro[k].speed = 1;
     }
 }
 
 void DrawBullet(Tiros *tiro, int tamanho)
 {
-    for(int k = 0; k < tamanho; k++)
+    int k = 0;
+    if(tiro[k].live)
     {
-        al_draw_filled_circle(tiro[k].x, tiro[k].y, 5, al_map_rgb(147, 35, 95));
+    for(k; k < tamanho; k++)
+    {
+        al_draw_filled_circle(tiro[k].x, tiro[k].y, 5, al_map_rgb(255, 255, 0));
+    }
     }
 }
 
@@ -311,7 +327,7 @@ void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros)
             if(!tiro[k].live)
             {
                 tiro[k].live = true;
-                tiro[k].x = 65+rand()%20;
+                tiro[k].x = 65;
                 tiro[k].y = zombie[k].y;
             }
         }
@@ -335,6 +351,28 @@ void UpdateBullet(Tiros *tiro, int tamanho)
         {
             tiro[k].live = false;
             tiro[k].x = 65;
+        }
+    }
+}
+
+void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies)
+{
+    for(int i = 0; i < numero_zombies; i++)
+    {
+        if(zombie[i].live)
+        {
+            if(tiro[i].live)
+            {
+                if(tiro[i].x > zombie[i].x - zombie[i].boundx
+                   && tiro[i].x < zombie[i].x + zombie[i].boundx
+                   && tiro[i].y > zombie[i].y - zombie[i].boundy
+                   && tiro[i].y < zombie[i].y + zombie[i].boundy
+                   )
+                {
+                    zombie[i].live = false;
+                    tiro[i].live = false;
+                }
+            }
         }
     }
 }
@@ -375,7 +413,10 @@ void DrawEnergia (Energia *energia, int tamanho)
 {
     for(int i = 0; i < tamanho; i++)
     {
+        if(energia[i].live)
+        {
         al_draw_filled_circle(energia[i].x, energia[i].y, 5, al_map_rgb(255, 255, 255));
+        }
         printf("desenho %d\n", i);
     }
 }
@@ -414,13 +455,21 @@ void UpdateEnergia(Energia *energia, int tamanho)
         }
     }
 }
-void PegaEnergia(Energia *energia, float mouse_x, float mouse_y)
+void PegaEnergia(Energia *energia, float mouse_x, float mouse_y, int numero_energia)
 {
-    for(int i = 0; i < 3; i++)
+
+    for(int i = 0; i < numero_energia; i++)
     {
-        if(mouse_x == energia[i].x && mouse_y == energia[i].y)
+        if (energia[i].live)
+        {
+        if(mouse_x > (energia[i].x-20)
+           && mouse_x < (energia[i].x+20)
+           && mouse_y < (energia[i].y+20)
+           && mouse_y > (energia[i].y-20))
         {
             energia[i].live = false;
         }
+        }
+
     }
 }

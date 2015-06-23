@@ -43,6 +43,7 @@
 			<Add library="C:\Users\Vítor\Desktop\allegro5\lib\liballegro-5.0.10-monolith-mt.a" />
 			<Add directory="C:/Users/Vítor/Desktop/allegro5/lib" />
 		</Linker>
+		<Unit filename="colisao.cpp" />
 		<Unit filename="main.cpp" />
 		<Unit filename="objects.h" />
 		<Extensions>
