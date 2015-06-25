@@ -36,7 +36,7 @@ struct Zombies
     bool live; // Define quando um novo Zombie surge
     int life;
     float speed; // Velocidade do Zombie
-    int boundx; // Colisao X
+    float boundx; // Colisao X
     int boundy; // Colisao Y
 
 };
