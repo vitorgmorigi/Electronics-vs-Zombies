@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_primitives.h>
+#include <allegro5\allegro_font.h>
+#include <allegro5\allegro_ttf.h>
 #include "objects.h"
 
 // VARIAVEIS GLOBAIS
@@ -10,13 +12,15 @@ const int HEIGHT = 480; //Resolução Y
 enum KEYS { UP, DOWN, LEFT, RIGHT, ONE}; //Introduz as teclas primitivas do teclado
 const int FPS = 60;
 const int NUM_ZOMBIES = 7;
-const int NUM_TIROS = 30;
+const int NUM_TIROS = 7;
 const int NUM_ENERGIA = 4;
 const int LINHA_MAX = 5;
 const int COL_MAX = 9;
 const int WIDTH_PIXEL = WIDTH / LINHA_MAX; // Resoluçao X do pixel
 const int HEIGHT_PIXEL = HEIGHT / COL_MAX; // Resoluçao Y do pixel
 int timer2;
+int energia_armazenada = 0;
+int  tiros_tela = 0;
 
 int mapa[5][9] =
 {
@@ -40,10 +44,10 @@ void StartElectronic(Electronics &resistor);
 
 void InitBullet(Tiros *tiro, int tamanho);
 void DrawBullet(Tiros *tiro, int tamanho);
-void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros);
+void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros, int numero_zombies);
 void UpdateBullet(Tiros *tiro, int tamanho);
 
-void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies);
+void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int numero_tiros);
 
 
 void InitEnergia (Energia *energia, int tamanho);
@@ -76,6 +80,7 @@ int main(void)
     ALLEGRO_DISPLAY *display = NULL;
     ALLEGRO_EVENT_QUEUE *event_queue = NULL;
     ALLEGRO_TIMER *timer = NULL;
+    ALLEGRO_FONT *font18 = NULL;
 
     if(!al_init()) //Inicializa o Allegro
     {
@@ -93,6 +98,8 @@ int main(void)
     al_init_primitives_addon(); //Introduz os comandos primitivos(figuras geometricas) do Allegro
     al_install_mouse(); // Introduz o comando do mouse
     al_install_keyboard(); //Introduz o comando de teclas
+    al_init_font_addon();
+    al_init_ttf_addon();
 
     event_queue = al_create_event_queue();
     timer = al_create_timer(0.20 / FPS); // Define o tempo de atualizaçao do timer
@@ -102,6 +109,8 @@ int main(void)
     InitElectronic(resistor);
     InitEnergia(energia, NUM_ENERGIA);
     InitBullet(tiro, NUM_TIROS);
+
+    font18 = al_load_font("arial.ttf", 18, 0);
 
     al_register_event_source(event_queue, al_get_keyboard_event_source());
     al_register_event_source(event_queue, al_get_display_event_source(display));
@@ -123,14 +132,14 @@ int main(void)
             StartEnergia(energia, NUM_ENERGIA);
             UpdateEnergia(energia, NUM_ENERGIA);
             UpdateBullet(tiro, NUM_ZOMBIES);
-            ColisaoBulletZombie(zombie, tiro, NUM_ZOMBIES);
+            ColisaoBulletZombie(zombie, tiro, NUM_ZOMBIES, NUM_TIROS);
             timer2++;
 
-                if(timer2 >= 120) // faz os Electronics atirarem numa velocidade constante
-                {
-                    FireBullet(tiro, zombie, NUM_TIROS);
-                    timer2 = 0;
-                }
+            if(timer2 >= 200) // faz os Electronics atirarem numa velocidade constante (2 segundos, pois 120 dividido pelo numero de FPS que eh 60, eh igual a 2)
+            {
+                FireBullet(tiro, zombie, NUM_TIROS, NUM_ZOMBIES);
+                timer2 = 0;
+            }
 
         }
 
@@ -155,8 +164,6 @@ int main(void)
             case ALLEGRO_KEY_DOWN:
                 keys[DOWN] = true;
                 break;
-                if(ev.type == ALLEGRO_EVENT_TIMER)
-                case ALLEGRO_KEY_RIGHT:
                 keys[RIGHT] = true;
                 break;
             case ALLEGRO_KEY_LEFT:
@@ -211,6 +218,16 @@ int main(void)
             DrawEnergia(energia, NUM_ENERGIA);
             DrawElectronic(resistor);
             DrawBullet(tiro, NUM_ZOMBIES);
+            al_draw_textf(font18, al_map_rgb(255, 0, 255), 5, 5, 0, "Energia: %i", energia_armazenada);
+            al_draw_textf(font18, al_map_rgb(255, 0, 255), 300, 5, 0, "Tiros disparados: %i", tiros_tela);
+            for (int i=0; i<NUM_ZOMBIES;i++){
+             al_draw_textf(font18, al_map_rgb(255, 0, 255), 5+i*20, 450 , 0, "%i", zombie[i].live);
+            }
+            for (int i=0; i<NUM_TIROS;i++){
+             al_draw_textf(font18, al_map_rgb(255, 255, 255), 150+i*20, 450 , 0, "%i", tiro[i].live);
+            }
+
+
             al_flip_display();
             al_clear_to_color(al_map_rgb(0,0,0));
 
@@ -229,7 +246,7 @@ void InitZombie (Zombies *zombie, int tamanho)
     {
         zombie[i].ID = ZOMBIES;
         zombie[i].live = false;
-        zombie[i].speed = 0.10;
+        zombie[i].speed = 0.05;
         zombie[i].boundx = 10;
         zombie[i].boundy = 10;
         zombie[i].life = 100;
@@ -250,20 +267,25 @@ void DrawZombie (Zombies *zombie, int tamanho)
 }
 void StartZombie(Zombies *zombie, int tamanho)
 {
+
+
     for(int i = 0; i < tamanho; i++)
     {
         if(!zombie[i].live)
         {
+
             if(rand() % 1000 == 0)
             {
                 zombie[i].live = true;
-                printf("vivo %d\n", i);
+                printf("\nzombie %d\n", i);
                 zombie[i].x = WIDTH;
                 zombie[i].y = 45 + 96 * rand() % (HEIGHT);
             }
-            break;
         }
+
+
     }
+
 }
 
 void UpdateZombie(Zombies *zombie, int tamanho)
@@ -286,11 +308,9 @@ int TemZombie(Zombies *zombie, int tamanho)
     {
         if(zombie[i].live)
             return 1;
-
-        if(zombie[i].live == false)
-            return 0;
-
     }
+    return 0;
+
 }
 
 void InitBullet(Tiros *tiro, int tamanho)
@@ -310,25 +330,36 @@ void DrawBullet(Tiros *tiro, int tamanho)
     int k = 0;
     if(tiro[k].live)
     {
-    for(k; k < tamanho; k++)
-    {
-        al_draw_filled_circle(tiro[k].x, tiro[k].y, 5, al_map_rgb(255, 255, 0));
-    }
+        for(k; k < tamanho; k++)
+        {
+            al_draw_filled_circle(tiro[k].x, tiro[k].y, 5, al_map_rgb(255, 255, 0));
+        }
     }
 }
 
-void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros)
+void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros, int numero_zombies)
 {
 
     if (TemZombie(zombie, NUM_ZOMBIES))
     {
-        for (int k = 0; k < numero_tiros; k++)
+        for(int k = 0; k < numero_zombies; k++)
         {
-            if(!tiro[k].live)
+            if(zombie[k].live)
             {
-                tiro[k].live = true;
-                tiro[k].x = 65;
-                tiro[k].y = zombie[k].y;
+
+                for (int i = 0; i < numero_tiros; i++)
+                {
+                    if(!tiro[i].live)
+                    {
+                        tiro[i].live = true;
+                        tiro[i].x = 65;
+                        tiro[i].y = zombie[k].y;
+                        printf("atirou %d no zombie %d na pos(%d, %d)\n", i, k, tiro[i].x, tiro[i].y);
+                        tiros_tela++;
+                        break;
+                    }
+                    // impede que varios tiros sejam disparados ao mesmo tempo
+                }
             }
         }
     }
@@ -355,22 +386,27 @@ void UpdateBullet(Tiros *tiro, int tamanho)
     }
 }
 
-void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies)
+void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int numero_tiros)
 {
     for(int i = 0; i < numero_zombies; i++)
     {
         if(zombie[i].live)
         {
-            if(tiro[i].live)
+            for (int k = 0; k < numero_tiros; k++)
             {
-                if(tiro[i].x > zombie[i].x - zombie[i].boundx
-                   && tiro[i].x < zombie[i].x + zombie[i].boundx
-                   && tiro[i].y > zombie[i].y - zombie[i].boundy
-                   && tiro[i].y < zombie[i].y + zombie[i].boundy
-                   )
+
+
+                if(tiro[k].live)
                 {
-                    zombie[i].live = false;
-                    tiro[i].live = false;
+                    if(tiro[k].x > zombie[i].x - zombie[i].boundx
+                            && tiro[k].x < zombie[i].x + zombie[i].boundx
+                            && tiro[k].y > zombie[i].y - zombie[i].boundy
+                            && tiro[k].y < zombie[i].y + zombie[i].boundy
+                      )
+                    {
+                        zombie[i].live = false;
+                        tiro[k].live = false;
+                    }
                 }
             }
         }
@@ -415,9 +451,8 @@ void DrawEnergia (Energia *energia, int tamanho)
     {
         if(energia[i].live)
         {
-        al_draw_filled_circle(energia[i].x, energia[i].y, 5, al_map_rgb(255, 255, 255));
+            al_draw_filled_circle(energia[i].x, energia[i].y, 5, al_map_rgb(255, 255, 255));
         }
-        printf("desenho %d\n", i);
     }
 }
 
@@ -432,7 +467,6 @@ void StartEnergia(Energia *energia, int tamanho)
                 energia[i].live = true;
                 energia[i].x = rand() % (WIDTH);
                 energia[i].y = 0;
-                printf("criou %d\n",i);
             }
         }
     }
@@ -445,7 +479,6 @@ void UpdateEnergia(Energia *energia, int tamanho)
         if(energia[i].live)
         {
             energia[i].y += energia[i].speed;
-            printf("atualizou %d %.2f\n",i, energia[i].y);
         }
 
         if(energia[i].y > HEIGHT)
@@ -462,13 +495,14 @@ void PegaEnergia(Energia *energia, float mouse_x, float mouse_y, int numero_ener
     {
         if (energia[i].live)
         {
-        if(mouse_x > (energia[i].x-20)
-           && mouse_x < (energia[i].x+20)
-           && mouse_y < (energia[i].y+20)
-           && mouse_y > (energia[i].y-20))
-        {
-            energia[i].live = false;
-        }
+            if(mouse_x > (energia[i].x-20)
+                    && mouse_x < (energia[i].x+20)
+                    && mouse_y < (energia[i].y+20)
+                    && mouse_y > (energia[i].y-20))
+            {
+                energia[i].live = false;
+                energia_armazenada += 25;
+            }
         }
 
     }
