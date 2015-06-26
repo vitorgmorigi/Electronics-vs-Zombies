@@ -18,9 +18,11 @@ const int LINHA_MAX = 5;
 const int COL_MAX = 9;
 const int WIDTH_PIXEL = WIDTH / LINHA_MAX; // Resoluçao X do pixel
 const int HEIGHT_PIXEL = HEIGHT / COL_MAX; // Resoluçao Y do pixel
-int timer2;
+int timer_tiros;
+int timer_zombie;
 int energia_armazenada = 0;
-int  tiros_tela = 0;
+int tiros_tela = 0;
+int timer_energia;
 
 int mapa[5][9] =
 {
@@ -127,18 +129,31 @@ int main(void)
         if(ev.type == ALLEGRO_EVENT_TIMER)
         {
             redraw=true;
+
             StartZombie(zombie, NUM_ZOMBIES);
-            UpdateZombie(zombie, NUM_ZOMBIES);
+
             StartEnergia(energia, NUM_ENERGIA);
-            UpdateEnergia(energia, NUM_ENERGIA);
+
             UpdateBullet(tiro, NUM_ZOMBIES);
             ColisaoBulletZombie(zombie, tiro, NUM_ZOMBIES, NUM_TIROS);
-            timer2++;
+            timer_tiros++;
+            timer_zombie++;
+            timer_energia++;
+            if(timer_zombie >= 15)
+            {
+               UpdateZombie(zombie, NUM_ZOMBIES);
+               timer_zombie = 0;
+            }
 
-            if(timer2 >= 200) // faz os Electronics atirarem numa velocidade constante (2 segundos, pois 120 dividido pelo numero de FPS que eh 60, eh igual a 2)
+            if(timer_tiros >= 200) // faz os Electronics atirarem numa velocidade constante (2 segundos, pois 120 dividido pelo numero de FPS que eh 60, eh igual a 2)
             {
                 FireBullet(tiro, zombie, NUM_TIROS, NUM_ZOMBIES);
-                timer2 = 0;
+                timer_tiros = 0;
+            }
+            if(timer_energia >= 10)
+            {
+                UpdateEnergia(energia, NUM_ENERGIA);
+                timer_energia = 0;
             }
 
         }
@@ -246,7 +261,7 @@ void InitZombie (Zombies *zombie, int tamanho)
     {
         zombie[i].ID = ZOMBIES;
         zombie[i].live = false;
-        zombie[i].speed = 0.05;
+        zombie[i].speed = 1;
         zombie[i].boundx = 10;
         zombie[i].boundy = 10;
         zombie[i].life = 100;
@@ -441,7 +456,7 @@ void InitEnergia (Energia *energia, int tamanho)
     {
         energia[i].ID = ENERGIA;
         energia[i].live = false;
-        energia[i].speed = 0.1;
+        energia[i].speed = 1;
     }
 }
 

@@ -8,12 +8,12 @@ enum PODERES{CALOR, MAGNETISMO, ELETRONS, LUZ, ROTACAO, BARREIRA, AMPLIFICACAO, 
 struct Tiros
 {
     int ID; // Tipo de objeto
-    float x; // Posiçao X
+    int x; // Posiçao X
     int y; // Posiçao Y
     bool live; // Define quando o tiro é acionado
     int PODER; // Tipo de poder do objeto
     int forca_tiro; // Força do tiro
-    float speed; // Velocidade do tiro
+    int speed; // Velocidade do tiro
 
 };
 
@@ -31,7 +31,7 @@ struct Electronics
 struct Zombies
 {
     int ID; // Tipo de objeto
-    float x; // Posiçao X
+    int x; // Posiçao X
     int y; // Posiçao Y
     bool live; // Define quando um novo Zombie surge
     int life;
@@ -44,10 +44,10 @@ struct Zombies
 struct Energia
 {
     int ID;
-    float x;
-    float y;
+    int x;
+    int y;
     bool live;
-    float speed;
-    float boundx;
-    float boundy;
+    int speed;
+    int boundx;
+    int boundy;
 };
