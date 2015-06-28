@@ -49,7 +49,7 @@ void StartElectronic(Electronics *resistor, float mouse_x, float mouse_y);
 
 void InitBullet(Tiros *tiro, int tamanho);
 void DrawBullet(Tiros *tiro, int tamanho);
-void FireBullet(Tiros *tiro, Zombies *zombie, Electronics *resistor, int numero_tiros, int numero_zombies);
+void FireBullet(Tiros *tiro, Zombies *zombie, Electronics *resistor, int numero_tiros, int numero_zombies, int numero_resistores);
 void UpdateBullet(Tiros *tiro, int tamanho);
 
 void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int numero_tiros);
@@ -68,8 +68,8 @@ int DaParaComprarResistor();
 int main(void)
 {
     // VARIAVEIS PRIMITIVAS
-    bool done = false; //Variavel booleana para identificar se o programa terminou de ser executado
-    bool redraw = true; //Enquanto essa variavel for verdadeira, ira ser desenhado algo na tela
+    bool done = false; // Variavel booleana para identificar se o programa terminou de ser executado
+    bool redraw = true; // Enquanto essa variavel for verdadeira, ira ser desenhado algo na tela
 
 
 
@@ -135,6 +135,7 @@ int main(void)
 
 
             ColisaoBulletZombie(zombie, tiro, NUM_ZOMBIES, NUM_TIROS);
+            ColisaoZombieElectronic(zombie, resistor, NUM_ZOMBIES, NUM_ELECTRONICS);
             timer_tiros++; // subtimer tiros
             timer_zombie_start++; // subtimer surgimento zombies
             UpdateBullet(tiro, NUM_ZOMBIES);
@@ -149,7 +150,7 @@ int main(void)
             }
             if(timer_tiros >= 200) // faz os Electronics atirarem numa velocidade constante
             {
-                FireBullet(tiro, zombie, resistor, NUM_TIROS, NUM_ZOMBIES);
+                FireBullet(tiro, zombie, resistor, NUM_TIROS, NUM_ZOMBIES, NUM_ELECTRONICS);
                 timer_tiros = 0;
             }
             if(timer_zombie_speed >= 15) // faz os Zombies se movimentarem mais lentamente, pois a velocidade minima (1) ainda eh rapida
@@ -282,8 +283,8 @@ void InitZombie (Zombies *zombie, int tamanho)
         zombie[i].ID = ZOMBIES;
         zombie[i].live = false;
         zombie[i].speed = 1;
-        zombie[i].boundx = 10;
-        zombie[i].boundy = 10;
+        zombie[i].boundx = 3;
+        zombie[i].boundy = 3;
         zombie[i].life = 100;
     }
 }
@@ -363,17 +364,18 @@ void InitBullet(Tiros *tiro, int tamanho)
 
 void DrawBullet(Tiros *tiro, int tamanho)
 {
-    int k = 0;
-    if(tiro[k].live)
+
+    for(int k = 0; k < tamanho; k++)
     {
-        for(k; k < tamanho; k++)
+        if(tiro[k].live)
         {
             al_draw_filled_circle(tiro[k].x, tiro[k].y, 5, al_map_rgb(255, 255, 0));
         }
     }
+
 }
 
-void FireBullet(Tiros *tiro, Zombies *zombie, Electronics *resistor, int numero_tiros, int numero_zombies)
+void FireBullet(Tiros *tiro, Zombies *zombie, Electronics *resistor, int numero_tiros, int numero_zombies, int numero_resistores)
 {
 
     if (TemZombie(zombie, NUM_ZOMBIES))
@@ -383,20 +385,32 @@ void FireBullet(Tiros *tiro, Zombies *zombie, Electronics *resistor, int numero_
             if(zombie[k].live)
             {
 
-                for (int i = 0; i < numero_tiros; i++)
+                for (int i = 0; i < numero_resistores; i++)
                 {
                     if(resistor[i].live)
                     {
-                    if(!tiro[i].live)
-                    {
-                        tiro[i].live = true;
-                        tiro[i].x = resistor[i].x;
-                        tiro[i].y = resistor[i].y;
-                        printf("atirou %d no zombie %d na pos(%d, %d)\n", i, k, tiro[i].x, tiro[i].y);
-                        tiros_tela++;
-                        break;
+                        for(int j = 0; j < numero_tiros; j++)
+                        {
+                        if(!tiro[j].live)
+                        {
+                            if(resistor[i].y != zombie[k].y)
+                            {
+                                tiro[j].live = false;
+                            }
+                            else
+                            {
+                            tiro[j].live = true;
+                            tiro[j].x = resistor[i].x;
+                            tiro[j].y = resistor[i].y;
+                            printf("atirou %d no zombie %d na pos(%d, %d)\n", i, k, tiro[j].x, tiro[j].y);
+                            tiros_tela++;
+                            break;
+                            }
+
+                        }
+                        }
                     }
-                    }
+
                     // impede que varios tiros sejam disparados ao mesmo tempo
                 }
             }
@@ -426,6 +440,7 @@ void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int n
     {
         if(zombie[i].live)
         {
+
             for (int k = 0; k < numero_tiros; k++)
             {
                 if(tiro[k].live)
@@ -433,13 +448,41 @@ void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int n
                     if(tiro[k].x > zombie[i].x - zombie[i].boundx
                             && tiro[k].x < zombie[i].x + zombie[i].boundx
                             && tiro[k].y > zombie[i].y - zombie[i].boundy
-                            && tiro[k].y < zombie[i].y + zombie[i].boundy
-                      )
+                            && tiro[k].y < zombie[i].y + zombie[i].boundy)
                     {
                         zombie[i].life -= 25;
+                        printf("\ncolidiu tiro %d com zombie %d\n", k, i);
                         tiro[k].live = false;
                         if(zombie[i].life <= 0)
+                        {
                             zombie[i].live = false;
+                            zombie[i].life = 100;
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+}
+
+void ColisaoZombieElectronic (Zombies *zombie, Electronics *resistor, int numero_zombies, int numero_resistor)
+{
+    for(int i = 0; i < numero_zombies; i++)
+    {
+        if(zombie[i].live)
+        {
+            for(int k = 0; k < numero_resistor; k++)
+            {
+                if(resistor[k].live)
+                {
+                    if(zombie[i].x < resistor[k].x + resistor[k].boundx
+                            && zombie[i].x > resistor[k].x - resistor[k].boundx
+                            && zombie[i].y < resistor[k].y + resistor[k].boundy
+                            && zombie[i].y > resistor[k].y - resistor[k].boundy)
+                    {
+                        resistor[k].live = false;
+                        zombie[i].live = false;
                     }
                 }
             }
@@ -453,8 +496,8 @@ void InitElectronic(Electronics *resistor, int numero_electronics)
     {
         resistor[i].ID = ELECTRONICS;
         resistor[i].life = 100;
-        resistor[i].boundx = 50;
-        resistor[i].boundy = 50;
+        resistor[i].boundx = 20;
+        resistor[i].boundy = 20;
         resistor[i].live = false;
     }
 
@@ -852,85 +895,85 @@ void StartElectronic(Electronics *resistor, float mouse_x, float mouse_y)
     }
 }
 
-    void InitEnergia (Energia *energia, int tamanho)
+void InitEnergia (Energia *energia, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
     {
-        for(int i = 0; i < tamanho; i++)
+        energia[i].ID = ENERGIA;
+        energia[i].live = false;
+        energia[i].speed = 1;
+    }
+}
+
+void DrawEnergia (Energia *energia, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+        if(energia[i].live)
         {
-            energia[i].ID = ENERGIA;
+            al_draw_filled_circle(energia[i].x, energia[i].y, 5, al_map_rgb(255, 255, 255));
+        }
+    }
+}
+
+void StartEnergia(Energia *energia, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+        if(!energia[i].live)
+        {
+            energia[i].live = true;
+            energia[i].x = rand() % (WIDTH);
+            energia[i].y = 0;
+            break;
+        }
+    }
+}
+
+void UpdateEnergia(Energia *energia, int tamanho)
+{
+    for(int i = 0; i < tamanho; i++)
+    {
+        if(energia[i].live)
+        {
+            energia[i].y += energia[i].speed;
+        }
+
+        if(energia[i].y > HEIGHT)
+        {
+            energia[i].y = HEIGHT;
             energia[i].live = false;
-            energia[i].speed = 1;
         }
     }
+}
+void PegaEnergia(Energia *energia, float mouse_x, float mouse_y, int numero_energia)
+{
 
-    void DrawEnergia (Energia *energia, int tamanho)
+    for(int i = 0; i < numero_energia; i++)
     {
-        for(int i = 0; i < tamanho; i++)
+        if (energia[i].live)
         {
-            if(energia[i].live)
+            if(mouse_x > (energia[i].x-20)
+                    && mouse_x < (energia[i].x+20)
+                    && mouse_y < (energia[i].y+20)
+                    && mouse_y > (energia[i].y-20))
             {
-                al_draw_filled_circle(energia[i].x, energia[i].y, 5, al_map_rgb(255, 255, 255));
-            }
-        }
-    }
-
-    void StartEnergia(Energia *energia, int tamanho)
-    {
-        for(int i = 0; i < tamanho; i++)
-        {
-            if(!energia[i].live)
-            {
-                    energia[i].live = true;
-                    energia[i].x = rand() % (WIDTH);
-                    energia[i].y = 0;
-                    break;
-            }
-        }
-    }
-
-    void UpdateEnergia(Energia *energia, int tamanho)
-    {
-        for(int i = 0; i < tamanho; i++)
-        {
-            if(energia[i].live)
-            {
-                energia[i].y += energia[i].speed;
-            }
-
-            if(energia[i].y > HEIGHT)
-            {
-                energia[i].y = HEIGHT;
                 energia[i].live = false;
+                energia_armazenada += 25;
             }
         }
+
     }
-    void PegaEnergia(Energia *energia, float mouse_x, float mouse_y, int numero_energia)
+}
+
+int DaParaComprarResistor()
+{
+    if(energia_armazenada >= 100)
     {
-
-        for(int i = 0; i < numero_energia; i++)
-        {
-            if (energia[i].live)
-            {
-                if(mouse_x > (energia[i].x-20)
-                        && mouse_x < (energia[i].x+20)
-                        && mouse_y < (energia[i].y+20)
-                        && mouse_y > (energia[i].y-20))
-                {
-                    energia[i].live = false;
-                    energia_armazenada += 25;
-                }
-            }
-
-        }
+        return 1;
     }
+    return 0;
 
-    int DaParaComprarResistor()
-    {
-        if(energia_armazenada >= 100)
-        {
-            return 1;
-        }
-        return 0;
-
-    }
+}
 
 
