@@ -23,7 +23,8 @@ struct Electronics
     int x; // Posiçao X
     int y; // Posiçao Y
     int life; // Vida do objeto
-    int boundx; //Colisao X
+    bool live; // Define quando o Electronic ta vivo
+    int boundx; // Colisao X
     int boundy; // Colisao Y
     struct Tiros tiro;
 };

@@ -7,13 +7,14 @@
 #include "objects.h"
 
 // VARIAVEIS GLOBAIS
-const int WIDTH = 640; //Resolução X
+const int WIDTH = 800; //Resolução X
 const int HEIGHT = 480; //Resolução Y
 enum KEYS { UP, DOWN, LEFT, RIGHT, ONE}; //Introduz as teclas primitivas do teclado
 const int FPS = 60;
 const int NUM_ZOMBIES = 7;
 const int NUM_TIROS = 7;
 const int NUM_ENERGIA = 4;
+const int NUM_ELECTRONICS = 45;
 const int LINHA_MAX = 5;
 const int COL_MAX = 9;
 const int WIDTH_PIXEL = WIDTH / LINHA_MAX; // Resoluçao X do pixel
@@ -23,8 +24,9 @@ int timer_zombie;
 int energia_armazenada = 0;
 int tiros_tela = 0;
 int timer_energia;
+int V_ELT = 0;
 
-int mapa[5][9] =
+int mapa[5][9] = // nao esta sendo utilizado (TALVEZ ira ser utilizado no futuro)
 {
     {0,0,0,0,0,0,0,0,1},
     {0,0,0,0,0,0,0,0,1},
@@ -33,16 +35,15 @@ int mapa[5][9] =
     {0,0,0,0,0,0,0,0,1},
 };
 
-
 // PROTOTIPOS
 void InitZombie (Zombies *zombie, int tamanho);
 void DrawZombie (Zombies *zombie, int tamanho);
 void StartZombie(Zombies *zombie, int tamanho);
 void UpdateZombie(Zombies *zombie, int tamanho);
 
-void InitElectronic(Electronics &resistor);
-void DrawElectronic(Electronics &resistor);
-void StartElectronic(Electronics &resistor);
+void InitElectronic(Electronics *resistor, int numero_electronics);
+void DrawElectronic(Electronics *resistor, int numero_electronics);
+void StartElectronic(Electronics *resistor, float mouse_x, float mouse_y);
 
 void InitBullet(Tiros *tiro, int tamanho);
 void DrawBullet(Tiros *tiro, int tamanho);
@@ -51,7 +52,6 @@ void UpdateBullet(Tiros *tiro, int tamanho);
 
 void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int numero_tiros);
 
-
 void InitEnergia (Energia *energia, int tamanho);
 void DrawEnergia (Energia *energia, int tamanho);
 void StartEnergia(Energia *energia, int tamanho);
@@ -59,7 +59,7 @@ void UpdateEnergia(Energia *energia, int tamanho);
 void PegaEnergia(Energia *energia, float mouse_x, float mouse_y, int numero_energia);
 
 int TemZombie(Zombies *zombie, int tamanho);
-
+int DaParaComprarResistor();
 
 
 int main(void)
@@ -72,7 +72,7 @@ int main(void)
 
     // STRUCTS DOS OBJETOS
     Zombies zombie[NUM_ZOMBIES];
-    Electronics resistor;
+    Electronics resistor[NUM_ELECTRONICS];
     Tiros tiro[NUM_TIROS];
     Energia energia[NUM_ENERGIA];
 
@@ -84,22 +84,22 @@ int main(void)
     ALLEGRO_TIMER *timer = NULL;
     ALLEGRO_FONT *font18 = NULL;
 
-    if(!al_init()) //Inicializa o Allegro
+    if(!al_init()) // Inicializa o Allegro
     {
         printf("Erro ao iniciar o Allegro");
         return -1;
     }
 
-    display = al_create_display(WIDTH, HEIGHT);//Cria o display -
+    display = al_create_display(WIDTH, HEIGHT);// Cria o display
 
-    if(!display)//Testa o display
+    if(!display)// Testa o display
     {
         printf("Erro ao iniciar o display");
         return -1;
     }
-    al_init_primitives_addon(); //Introduz os comandos primitivos(figuras geometricas) do Allegro
+    al_init_primitives_addon(); // Introduz os comandos primitivos(figuras geometricas) do Allegro
     al_install_mouse(); // Introduz o comando do mouse
-    al_install_keyboard(); //Introduz o comando de teclas
+    al_install_keyboard(); // Introduz o comando de teclas
     al_init_font_addon();
     al_init_ttf_addon();
 
@@ -108,7 +108,7 @@ int main(void)
 
     srand(time(NULL));
     InitZombie(zombie, NUM_ZOMBIES);
-    InitElectronic(resistor);
+    InitElectronic(resistor, NUM_ELECTRONICS);
     InitEnergia(energia, NUM_ENERGIA);
     InitBullet(tiro, NUM_TIROS);
 
@@ -120,7 +120,7 @@ int main(void)
     al_register_event_source(event_queue, al_get_timer_event_source(timer));
 
     al_start_timer(timer); // Inicia o timer
-    // Faz o cursor do mouse não aparecer no display
+
     while(!done)
     {
         ALLEGRO_EVENT ev;
@@ -131,26 +131,26 @@ int main(void)
             redraw=true;
 
             StartZombie(zombie, NUM_ZOMBIES);
-
             StartEnergia(energia, NUM_ENERGIA);
-
-            UpdateBullet(tiro, NUM_ZOMBIES);
-            ColisaoBulletZombie(zombie, tiro, NUM_ZOMBIES, NUM_TIROS);
-            timer_tiros++;
-            timer_zombie++;
-            timer_energia++;
-            if(timer_zombie >= 15)
-            {
-               UpdateZombie(zombie, NUM_ZOMBIES);
-               timer_zombie = 0;
-            }
-
-            if(timer_tiros >= 200) // faz os Electronics atirarem numa velocidade constante (2 segundos, pois 120 dividido pelo numero de FPS que eh 60, eh igual a 2)
+            timer_tiros++; // subtimer tiros
+            if(timer_tiros >= 200) // faz os Electronics atirarem numa velocidade constante
             {
                 FireBullet(tiro, zombie, NUM_TIROS, NUM_ZOMBIES);
                 timer_tiros = 0;
             }
-            if(timer_energia >= 10)
+            UpdateBullet(tiro, NUM_ZOMBIES);
+            ColisaoBulletZombie(zombie, tiro, NUM_ZOMBIES, NUM_TIROS);
+
+            timer_zombie++; // subtimer zombies
+            timer_energia++; // subtimer energias
+            if(timer_zombie >= 15) // faz os Zombies se movimentarem mais lentamente, pois a velocidade minima (1) ainda eh rapida
+            {
+                UpdateZombie(zombie, NUM_ZOMBIES);
+                timer_zombie = 0;
+            }
+
+
+            if(timer_energia >= 10) // faz as energias cairem mais lentamente
             {
                 UpdateEnergia(energia, NUM_ENERGIA);
                 timer_energia = 0;
@@ -165,6 +165,10 @@ int main(void)
 
         else if(ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
         {
+            if(ev.mouse.button & 1)
+            {
+                StartElectronic(resistor, ev.mouse.x, ev.mouse.y);
+            }
 
         }
 
@@ -231,15 +235,18 @@ int main(void)
             redraw=false;
             DrawZombie(zombie, NUM_ZOMBIES);
             DrawEnergia(energia, NUM_ENERGIA);
-            DrawElectronic(resistor);
+            DrawElectronic(resistor, NUM_ELECTRONICS);
             DrawBullet(tiro, NUM_ZOMBIES);
             al_draw_textf(font18, al_map_rgb(255, 0, 255), 5, 5, 0, "Energia: %i", energia_armazenada);
+            al_draw_textf(font18, al_map_rgb(255, 0, 255), 500, 5, 0, "Posicao x: %d", ev.mouse.x);
             al_draw_textf(font18, al_map_rgb(255, 0, 255), 300, 5, 0, "Tiros disparados: %i", tiros_tela);
-            for (int i=0; i<NUM_ZOMBIES;i++){
-             al_draw_textf(font18, al_map_rgb(255, 0, 255), 5+i*20, 450 , 0, "%i", zombie[i].live);
+            for (int i=0; i<NUM_ZOMBIES; i++)
+            {
+                al_draw_textf(font18, al_map_rgb(255, 0, 255), 5+i*20, 450 , 0, "%i", zombie[i].live);
             }
-            for (int i=0; i<NUM_TIROS;i++){
-             al_draw_textf(font18, al_map_rgb(255, 255, 255), 150+i*20, 450 , 0, "%i", tiro[i].live);
+            for (int i=0; i<NUM_TIROS; i++)
+            {
+                al_draw_textf(font18, al_map_rgb(255, 255, 255), 150+i*20, 450 , 0, "%i", tiro[i].live);
             }
 
 
@@ -337,6 +344,7 @@ void InitBullet(Tiros *tiro, int tamanho)
         tiro[k].PODER = CALOR;
         tiro[k].forca_tiro = 10;
         tiro[k].speed = 1;
+
     }
 }
 
@@ -428,97 +436,492 @@ void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int n
     }
 }
 
-void InitElectronic(Electronics &resistor)
+void InitElectronic(Electronics *resistor, int numero_electronics)
 {
-    resistor.ID = ELECTRONICS;
-    resistor.life = 100;
-    resistor.boundx = 50;
-    resistor.boundy = 50;
-}
-
-void DrawElectronic(Electronics &resistor)
-{
-    al_draw_filled_circle(65, 96-51, 20, al_map_rgb(0, 255, 0));
-    al_draw_filled_circle(65, 2*96-51, 20, al_map_rgb(0, 255, 0));
-    al_draw_filled_circle(65, 3*96-51, 20, al_map_rgb(0, 255, 0));
-    al_draw_filled_circle(65, 4*96-51, 20, al_map_rgb(0, 255, 0));
-    al_draw_filled_circle(65, 5*96-51, 20, al_map_rgb(0, 255, 0));
-}
-
-void StartElectronic(Electronics &resistor)
-{
-
-}
-
-void InitEnergia (Energia *energia, int tamanho)
-{
-    for(int i = 0; i < tamanho; i++)
+    for(int i = 0; i < numero_electronics; i++)
     {
-        energia[i].ID = ENERGIA;
-        energia[i].live = false;
-        energia[i].speed = 1;
+        resistor[i].ID = ELECTRONICS;
+        resistor[i].life = 100;
+        resistor[i].boundx = 50;
+        resistor[i].boundy = 50;
+        resistor[i].live = false;
     }
+
 }
 
-void DrawEnergia (Energia *energia, int tamanho)
+void DrawElectronic(Electronics *resistor, int numero_electronics)
 {
-    for(int i = 0; i < tamanho; i++)
+    for(int i = 0; i < numero_electronics; i++)
     {
-        if(energia[i].live)
+        if(resistor[i].live)
+            al_draw_filled_circle(resistor[i].x, resistor[i].y, 20, al_map_rgb(0, 255, 0));
+    }
+    //al_draw_filled_circle(65, 96-51, 20, al_map_rgb(0, 255, 0));
+    //al_draw_filled_circle(65, 2*96-51, 20, al_map_rgb(0, 255, 0));
+    //al_draw_filled_circle(65, 3*96-51, 20, al_map_rgb(0, 255, 0));
+    //al_draw_filled_circle(65, 4*96-51, 20, al_map_rgb(0, 255, 0));
+    //al_draw_filled_circle(65, 5*96-51, 20, al_map_rgb(0, 255, 0));
+}
+
+void StartElectronic(Electronics *resistor, float mouse_x, float mouse_y)
+{
+
+    if(DaParaComprarResistor())
+    {
+        // [LINHA] [COLUNA]
+
+        if(mouse_x < 100 && mouse_y < (2*96-51-40)) // [1] [1]
         {
-            al_draw_filled_circle(energia[i].x, energia[i].y, 5, al_map_rgb(255, 255, 255));
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 65;
+            resistor[V_ELT].y = 96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x < 100 && mouse_y > (2*96-51-40) && mouse_y < (3*96-51-40)) // [2] [1]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 65;
+            resistor[V_ELT].y = 2*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x < 100 && mouse_y > (3*96-51-40) && mouse_y < (4*96-51-40)) // [3] [1]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 65;
+            resistor[V_ELT].y = 3*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x < 100 && mouse_y > (4*96-51-40) && mouse_y < (5*96-51-40)) // [4] [1]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 65;
+            resistor[V_ELT].y = 4*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x < 100 && mouse_y > (5*96-51-40)) // [5] [1]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 65;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 115 && mouse_x < 185 && mouse_y < (2*96-51-40)) // [1] [2]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 150;
+            resistor[V_ELT].y = 96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 115 && mouse_x < 185 && mouse_y > (2*96-51-40) && mouse_y < (3*96-51-40)) // [2] [2]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 150;
+            resistor[V_ELT].y = 2*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 115 && mouse_x < 185 && mouse_y > (3*96-51-40) && mouse_y < (4*96-51-40)) // [3] [2]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 150;
+            resistor[V_ELT].y = 3*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 115 && mouse_x < 185 && mouse_y > (4*96-51-40) && mouse_y < (5*96-51-40)) // [4] [2]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 150;
+            resistor[V_ELT].y = 4*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 115 && mouse_x < 185 && mouse_y > (5*96-51-40)) // [5] [2]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 150;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 200 && mouse_x < 270 && mouse_y < (2*96-51-40)) // [1] [3]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 235;
+            resistor[V_ELT].y = 96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 200 && mouse_x < 270 && mouse_y > (2*96-51) && mouse_y < (3*96-51-40)) // [2] [3]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 235;
+            resistor[V_ELT].y = 2*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 200 && mouse_x < 270 && mouse_y > (3*96-51) && mouse_y < (4*96-51-40)) // [3] [3]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 235;
+            resistor[V_ELT].y = 3*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 200 && mouse_x < 270 && mouse_y > (4*96-51) && mouse_y < (5*96-51-40)) // [4] [3]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 235;
+            resistor[V_ELT].y = 4*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 200 && mouse_x < 270 && mouse_y > (5*96-51-40)) // [5] [3]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 235;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 285 && mouse_x < 350 && mouse_y < (2*96-51-40)) // [1] [4]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 315;
+            resistor[V_ELT].y = 96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 285 && mouse_x < 350 && mouse_y > (2*96-51-40) && mouse_y < (3*96-51-40)) // [2] [4]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 315;
+            resistor[V_ELT].y = 2*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 285 && mouse_x < 350 && mouse_y > (3*96-51-40) && mouse_y < (4*96-51-40)) // [3] [4]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 315;
+            resistor[V_ELT].y = 3*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 285 && mouse_x < 350 && mouse_y > (2*96-51-40)) // [4] [4]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 315;
+            resistor[V_ELT].y = 4*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 285 && mouse_x < 350 && mouse_y > (2*96-51-40)) // [5] [4]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 315;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 365 && mouse_x < 435 && mouse_y < (2*96-51-40)) // [1] [5]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 400;
+            resistor[V_ELT].y = 96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 365 && mouse_x < 435 && mouse_y > (2*96-51-40) && mouse_y < (3*96-51-40)) // [2] [5]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 400;
+            resistor[V_ELT].y = 2*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 365 && mouse_x < 435 && mouse_y > (3*96-51-40) && mouse_y < (4*96-51-40)) // [3] [5]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 400;
+            resistor[V_ELT].y = 3*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 365 && mouse_x < 435 && mouse_y > (4*96-51-40) && mouse_y < (5*96-51-40)) // [4] [5]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 400;
+            resistor[V_ELT].y = 4*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 365 && mouse_x < 435 && mouse_y > (5*96-51-40)) // [5] [5]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 400;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 450 && mouse_x < 515 && mouse_y < (2*96-51-40)) // [1] [6]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 485;
+            resistor[V_ELT].y = 96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 450 && mouse_x < 515 && mouse_y > (2*96-51-40) && mouse_y < (3*96-51-40)) // [2] [6]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 485;
+            resistor[V_ELT].y = 2*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 450 && mouse_x < 515 && mouse_y > (3*96-51-40) && mouse_y < (4*96-51-40)) // [3] [6]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 485;
+            resistor[V_ELT].y = 3*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 450 && mouse_x < 515 && mouse_y > (4*96-51-40) && mouse_y < (5*96-51-40)) // [4] [6]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 485;
+            resistor[V_ELT].y = 4*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 450 && mouse_x < 515 && mouse_y > (5*96-51-40)) // [5] [6]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 485;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 535 && mouse_x < 605 && mouse_y < (2*96-51-40)) // [1] [7]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 570;
+            resistor[V_ELT].y = 96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 535 && mouse_x < 605 && mouse_y > (2*96-51-40) && mouse_y < (3*96-51-40)) // [2] [7]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 570;
+            resistor[V_ELT].y = 2*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 535 && mouse_x < 605 && mouse_y > (3*96-51-40) && mouse_y < (4*96-51-40)) // [3] [7]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 570;
+            resistor[V_ELT].y = 3*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 535 && mouse_x < 605 && mouse_y > (4*96-51-40) && mouse_y < (5*96-51-40)) // [4] [7]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 570;
+            resistor[V_ELT].y = 4*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 535 && mouse_x < 605 && mouse_y > (5*96-51-40)) // [5] [7]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 570;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 535 && mouse_x < 605 && mouse_y > (5*96-51-40)) // [5] [7]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 570;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 615 && mouse_x < 690 && mouse_y < (2*96-51-40)) // [1] [8]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 655;
+            resistor[V_ELT].y = 96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 615 && mouse_x < 690 && mouse_y > (2*96-51-40) && mouse_y < (3*96-51-40)) // [2] [8]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 655;
+            resistor[V_ELT].y = 2*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 615 && mouse_x < 690 && mouse_y > (3*96-51-40) && mouse_y < (4*96-51-40)) // [3] [8]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 655;
+            resistor[V_ELT].y = 3*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 615 && mouse_x < 690 && mouse_y > (4*96-51-40) && mouse_y < (5*96-51-40)) // [4] [8]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 655;
+            resistor[V_ELT].y = 4*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 615 && mouse_x < 690 && mouse_y > (5*96-51-40)) // [5] [8]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 655;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 705 && mouse_x < 775 && mouse_y < (2*96-51-40)) // [1] [9]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 740;
+            resistor[V_ELT].y = 96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 705 && mouse_x < 775 && mouse_y > (2*96-51-40) && mouse_y < (3*96-51-40)) // [2] [9]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 740;
+            resistor[V_ELT].y = 2*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 705 && mouse_x < 775 && mouse_y > (3*96-51-40) && mouse_y < (4*96-51-40)) // [3] [9]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 740;
+            resistor[V_ELT].y = 3*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 705 && mouse_x < 775 && mouse_y > (4*96-51-40) && mouse_y < (5*96-51-40)) // [4] [9]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 740;
+            resistor[V_ELT].y = 4*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
+        }
+        if(mouse_x > 705 && mouse_x < 775 && mouse_y > (5*96-51-40)) // [5] [9]
+        {
+            resistor[V_ELT].live = true;
+            resistor[V_ELT].x = 740;
+            resistor[V_ELT].y = 5*96-51;
+            energia_armazenada -= 100;
+            V_ELT++;
         }
     }
 }
 
-void StartEnergia(Energia *energia, int tamanho)
-{
-    for(int i = 0; i < tamanho; i++)
+    void InitEnergia (Energia *energia, int tamanho)
     {
-        if(!energia[i].live)
+        for(int i = 0; i < tamanho; i++)
         {
-            if(rand() % 10000 == 0) // Gera um atraso pra nascer uma nova energia
-            {
-                energia[i].live = true;
-                energia[i].x = rand() % (WIDTH);
-                energia[i].y = 0;
-            }
-        }
-    }
-}
-
-void UpdateEnergia(Energia *energia, int tamanho)
-{
-    for(int i = 0; i < tamanho; i++)
-    {
-        if(energia[i].live)
-        {
-            energia[i].y += energia[i].speed;
-        }
-
-        if(energia[i].y > HEIGHT)
-        {
-            energia[i].y = HEIGHT;
+            energia[i].ID = ENERGIA;
             energia[i].live = false;
+            energia[i].speed = 1;
         }
     }
-}
-void PegaEnergia(Energia *energia, float mouse_x, float mouse_y, int numero_energia)
-{
 
-    for(int i = 0; i < numero_energia; i++)
+    void DrawEnergia (Energia *energia, int tamanho)
     {
-        if (energia[i].live)
+        for(int i = 0; i < tamanho; i++)
         {
-            if(mouse_x > (energia[i].x-20)
-                    && mouse_x < (energia[i].x+20)
-                    && mouse_y < (energia[i].y+20)
-                    && mouse_y > (energia[i].y-20))
+            if(energia[i].live)
             {
-                energia[i].live = false;
-                energia_armazenada += 25;
+                al_draw_filled_circle(energia[i].x, energia[i].y, 5, al_map_rgb(255, 255, 255));
             }
         }
+    }
+
+    void StartEnergia(Energia *energia, int tamanho)
+    {
+        for(int i = 0; i < tamanho; i++)
+        {
+            if(!energia[i].live)
+            {
+                if(rand() % 3000 == 0) // Gera um atraso pra nascer uma nova energia
+                {
+                    energia[i].live = true;
+                    energia[i].x = rand() % (WIDTH);
+                    energia[i].y = 0;
+                }
+            }
+        }
+    }
+
+    void UpdateEnergia(Energia *energia, int tamanho)
+    {
+        for(int i = 0; i < tamanho; i++)
+        {
+            if(energia[i].live)
+            {
+                energia[i].y += energia[i].speed;
+            }
+
+            if(energia[i].y > HEIGHT)
+            {
+                energia[i].y = HEIGHT;
+                energia[i].live = false;
+            }
+        }
+    }
+    void PegaEnergia(Energia *energia, float mouse_x, float mouse_y, int numero_energia)
+    {
+
+        for(int i = 0; i < numero_energia; i++)
+        {
+            if (energia[i].live)
+            {
+                if(mouse_x > (energia[i].x-20)
+                        && mouse_x < (energia[i].x+20)
+                        && mouse_y < (energia[i].y+20)
+                        && mouse_y > (energia[i].y-20))
+                {
+                    energia[i].live = false;
+                    energia_armazenada += 25;
+                }
+            }
+
+        }
+    }
+
+    int DaParaComprarResistor()
+    {
+        if(energia_armazenada >= 100)
+        {
+            return 1;
+        }
+        return 0;
 
     }
-}
+
+
