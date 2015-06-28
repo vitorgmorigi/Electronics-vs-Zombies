@@ -12,7 +12,7 @@ const int HEIGHT = 480; //Resolução Y
 enum KEYS { UP, DOWN, LEFT, RIGHT, ONE}; //Introduz as teclas primitivas do teclado
 const int FPS = 60;
 const int NUM_ZOMBIES = 7;
-const int NUM_TIROS = 7;
+const int NUM_TIROS = 15;
 const int NUM_ENERGIA = 4;
 const int NUM_ELECTRONICS = 45;
 const int LINHA_MAX = 5;
@@ -20,10 +20,12 @@ const int COL_MAX = 9;
 const int WIDTH_PIXEL = WIDTH / LINHA_MAX; // Resoluçao X do pixel
 const int HEIGHT_PIXEL = HEIGHT / COL_MAX; // Resoluçao Y do pixel
 int timer_tiros;
-int timer_zombie;
+int timer_zombie_speed;
+int timer_zombie_start;
+int timer_energia_speed;
+int timer_energia_start;
 int energia_armazenada = 0;
 int tiros_tela = 0;
-int timer_energia;
 int V_ELT = 0;
 
 int mapa[5][9] = // nao esta sendo utilizado (TALVEZ ira ser utilizado no futuro)
@@ -47,10 +49,11 @@ void StartElectronic(Electronics *resistor, float mouse_x, float mouse_y);
 
 void InitBullet(Tiros *tiro, int tamanho);
 void DrawBullet(Tiros *tiro, int tamanho);
-void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros, int numero_zombies);
+void FireBullet(Tiros *tiro, Zombies *zombie, Electronics *resistor, int numero_tiros, int numero_zombies);
 void UpdateBullet(Tiros *tiro, int tamanho);
 
 void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int numero_tiros);
+void ColisaoZombieElectronic (Zombies *zombie, Electronics *resistor, int numero_zombies, int numero_resistor);
 
 void InitEnergia (Energia *energia, int tamanho);
 void DrawEnergia (Energia *energia, int tamanho);
@@ -130,30 +133,40 @@ int main(void)
         {
             redraw=true;
 
-            StartZombie(zombie, NUM_ZOMBIES);
-            StartEnergia(energia, NUM_ENERGIA);
+
+            ColisaoBulletZombie(zombie, tiro, NUM_ZOMBIES, NUM_TIROS);
             timer_tiros++; // subtimer tiros
+            timer_zombie_start++; // subtimer surgimento zombies
+            UpdateBullet(tiro, NUM_ZOMBIES);
+            timer_zombie_speed++; // subtimer zombies
+            timer_energia_speed++; // subtimer velocidade energias
+            timer_energia_start++; // subtimer surgimento energias
+
+            if(timer_zombie_start >= 10)
+            {
+                StartZombie(zombie, NUM_ZOMBIES);
+                timer_zombie_start = 0;
+            }
             if(timer_tiros >= 200) // faz os Electronics atirarem numa velocidade constante
             {
-                FireBullet(tiro, zombie, NUM_TIROS, NUM_ZOMBIES);
+                FireBullet(tiro, zombie, resistor, NUM_TIROS, NUM_ZOMBIES);
                 timer_tiros = 0;
             }
-            UpdateBullet(tiro, NUM_ZOMBIES);
-            ColisaoBulletZombie(zombie, tiro, NUM_ZOMBIES, NUM_TIROS);
-
-            timer_zombie++; // subtimer zombies
-            timer_energia++; // subtimer energias
-            if(timer_zombie >= 15) // faz os Zombies se movimentarem mais lentamente, pois a velocidade minima (1) ainda eh rapida
+            if(timer_zombie_speed >= 15) // faz os Zombies se movimentarem mais lentamente, pois a velocidade minima (1) ainda eh rapida
             {
                 UpdateZombie(zombie, NUM_ZOMBIES);
-                timer_zombie = 0;
+                timer_zombie_speed = 0;
+            }
+            if(timer_energia_start >= 1000)
+            {
+                StartEnergia(energia, NUM_ENERGIA);
+                timer_energia_start = 0;
             }
 
-
-            if(timer_energia >= 10) // faz as energias cairem mais lentamente
+            if(timer_energia_speed >= 10) // faz as energias cairem mais lentamente
             {
                 UpdateEnergia(energia, NUM_ENERGIA);
-                timer_energia = 0;
+                timer_energia_speed = 0;
             }
 
         }
@@ -275,7 +288,6 @@ void InitZombie (Zombies *zombie, int tamanho)
     }
 }
 
-
 void DrawZombie (Zombies *zombie, int tamanho)
 {
     for(int i = 0; i < tamanho; i++)
@@ -287,6 +299,7 @@ void DrawZombie (Zombies *zombie, int tamanho)
         }
     }
 }
+
 void StartZombie(Zombies *zombie, int tamanho)
 {
 
@@ -360,7 +373,7 @@ void DrawBullet(Tiros *tiro, int tamanho)
     }
 }
 
-void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros, int numero_zombies)
+void FireBullet(Tiros *tiro, Zombies *zombie, Electronics *resistor, int numero_tiros, int numero_zombies)
 {
 
     if (TemZombie(zombie, NUM_ZOMBIES))
@@ -372,14 +385,17 @@ void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros, int numero_zombi
 
                 for (int i = 0; i < numero_tiros; i++)
                 {
+                    if(resistor[i].live)
+                    {
                     if(!tiro[i].live)
                     {
                         tiro[i].live = true;
-                        tiro[i].x = 65;
-                        tiro[i].y = zombie[k].y;
+                        tiro[i].x = resistor[i].x;
+                        tiro[i].y = resistor[i].y;
                         printf("atirou %d no zombie %d na pos(%d, %d)\n", i, k, tiro[i].x, tiro[i].y);
                         tiros_tela++;
                         break;
+                    }
                     }
                     // impede que varios tiros sejam disparados ao mesmo tempo
                 }
@@ -388,18 +404,13 @@ void FireBullet(Tiros *tiro, Zombies *zombie, int numero_tiros, int numero_zombi
     }
 }
 
-
-
 void UpdateBullet(Tiros *tiro, int tamanho)
 {
     for(int k = 0; k < tamanho; k++)
     {
-
-
         if(tiro[k].live)
         {
             tiro[k].x += tiro[k].speed;
-
         }
         if(tiro[k].x > WIDTH)
         {
@@ -417,8 +428,6 @@ void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int n
         {
             for (int k = 0; k < numero_tiros; k++)
             {
-
-
                 if(tiro[k].live)
                 {
                     if(tiro[k].x > zombie[i].x - zombie[i].boundx
@@ -427,8 +436,10 @@ void ColisaoBulletZombie(Zombies *zombie, Tiros *tiro, int numero_zombies, int n
                             && tiro[k].y < zombie[i].y + zombie[i].boundy
                       )
                     {
-                        zombie[i].live = false;
+                        zombie[i].life -= 25;
                         tiro[k].live = false;
+                        if(zombie[i].life <= 0)
+                            zombie[i].live = false;
                     }
                 }
             }
@@ -614,7 +625,7 @@ void StartElectronic(Electronics *resistor, float mouse_x, float mouse_y)
             energia_armazenada -= 100;
             V_ELT++;
         }
-        if(mouse_x > 285 && mouse_x < 350 && mouse_y > (2*96-51-40)) // [4] [4]
+        if(mouse_x > 285 && mouse_x < 350 && mouse_y > (4*96-51-40) && mouse_y < (5*96-51-40)) // [4] [4]
         {
             resistor[V_ELT].live = true;
             resistor[V_ELT].x = 315;
@@ -622,7 +633,7 @@ void StartElectronic(Electronics *resistor, float mouse_x, float mouse_y)
             energia_armazenada -= 100;
             V_ELT++;
         }
-        if(mouse_x > 285 && mouse_x < 350 && mouse_y > (2*96-51-40)) // [5] [4]
+        if(mouse_x > 285 && mouse_x < 350 && mouse_y > (5*96-51-40)) // [5] [4]
         {
             resistor[V_ELT].live = true;
             resistor[V_ELT].x = 315;
@@ -868,12 +879,10 @@ void StartElectronic(Electronics *resistor, float mouse_x, float mouse_y)
         {
             if(!energia[i].live)
             {
-                if(rand() % 3000 == 0) // Gera um atraso pra nascer uma nova energia
-                {
                     energia[i].live = true;
                     energia[i].x = rand() % (WIDTH);
                     energia[i].y = 0;
-                }
+                    break;
             }
         }
     }
