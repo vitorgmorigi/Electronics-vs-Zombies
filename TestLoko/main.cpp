@@ -5,15 +5,16 @@
 #include <stdio.h>
 #include "objects.h"				//Our primitive header file
 
-const int WIDTH = 640;
-const int HEIGHT = 480;
+const int WIDTH = 800;
+const int HEIGHT = 600;
 const int FPS = 60;
 const int LINHAS = 6;
 const int COLUNAS = 10;
-const int NUM_BULLETS = 12;
-const int DISTANCIAYZONE = 96;
-const int ZONEX = 640/COLUNAS;
-const int ZONEY = (480-DISTANCIAYZONE)/LINHAS;
+const int NUM_BULLETS = 60;
+const int NUM_ZOMBIES = 10;
+const int DISTANCIAYZONE = 120;
+const int ZONEX = WIDTH/COLUNAS;
+const int ZONEY = (HEIGHT-DISTANCIAYZONE)/LINHAS;
 
 void InitGamer(Gamer &gamer);
 
@@ -24,6 +25,12 @@ void InitBullet(Bullet bullet[], int size);
 void DrawBullet(Bullet bullet[], int size);
 void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS]);
 void UpdateBullet(Bullet bullet[], int size);
+void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer);
+
+void InitZombie(Zombie zombie[], int size);
+void DrawZombie(Zombie zombie[], int size);
+void StartZombie(Zombie zombie[], int size);
+void UpdateZombie(Zombie zombie[], int size);
 
 int main(void)
 {
@@ -41,6 +48,7 @@ int main(void)
     Gamer(gamer);
     Zone zone[LINHAS][COLUNAS];
     Bullet bullets[NUM_BULLETS+1];
+    Zombie zombie[NUM_ZOMBIES];
 
     ALLEGRO_DISPLAY *display = NULL;
     ALLEGRO_EVENT_QUEUE *event_queue = NULL;
@@ -67,6 +75,7 @@ int main(void)
     InitGamer(gamer);
     InitZone(zone, LINHAS, COLUNAS);
     InitBullet(bullets, NUM_BULLETS+1);
+    InitZombie(zombie, NUM_ZOMBIES);
 
     font18 = al_load_font("arial.ttf", 18, 0);
 
@@ -131,6 +140,9 @@ int main(void)
             }
 
             UpdateBullet(bullets, NUM_BULLETS+1);
+            StartZombie(zombie, NUM_ZOMBIES);
+            UpdateZombie(zombie, NUM_ZOMBIES);
+            CollideBullet(bullets, NUM_BULLETS, zombie, NUM_ZOMBIES, gamer);
         }
         else if(ev.type == ALLEGRO_EVENT_KEY_DOWN)
         {
@@ -201,6 +213,7 @@ int main(void)
             redraw = false;
             DrawZone(zone, LINHAS, COLUNAS);
             DrawBullet(bullets, NUM_BULLETS+1);
+            DrawZombie(zombie, NUM_ZOMBIES);
             al_draw_filled_rectangle(pos_x, pos_y, pos_x + 10, pos_y + 10, al_map_rgb(0, 0, 0));
             al_flip_display();
             al_clear_to_color(al_map_rgb(255,255,255));
@@ -221,7 +234,7 @@ void InitGamer(Gamer &gamer)
 {
     gamer.ID = PLAYER;
     gamer.energy = 0;
-    gamer.lives = 3;
+    gamer.lives = 2;
     gamer.score = 0;
 }
 
@@ -276,10 +289,10 @@ void InitBullet(Bullet bullet[], int size)
 }
 void DrawBullet(Bullet bullet[], int size)
 {
-    for(int i = size-1; i > 0; i--)
+    for(int i = 0; i < size; i++)
     {
         if(bullet[i].live)
-            al_draw_filled_circle(bullet[i].x, bullet[i].y, 2*i, al_map_rgb(100*i, 100*i, 100*1));
+            al_draw_filled_circle(bullet[i].x, bullet[i].y, 5, al_map_rgb(100*i, 100*i, 100*1));
     }
 }
 void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS])
@@ -290,7 +303,7 @@ void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS])
         {
             if(zone[i][j].draw == 3)
             {
-                for( int k = size-1; k > 0; k--)
+                for( int k = 0; k < size; k++)
                 {
                     if(!bullet[k].live)
                     {
@@ -305,8 +318,6 @@ void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS])
     }
 }
 
-
-
 void UpdateBullet(Bullet bullet[], int size)
 {
     for(int i = 0; i < size; i++)
@@ -316,6 +327,81 @@ void UpdateBullet(Bullet bullet[], int size)
             bullet[i].x += bullet[i].speed;
             if(bullet[i].x > WIDTH)
                 bullet[i].live = false;
+        }
+    }
+}
+
+void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer)
+{
+	for(int i = 0; i < bSize; i++)
+	{
+		if(bullet[i].live)
+		{
+			for(int j =0; j < cSize; j++)
+			{
+				if(zombie[j].live)
+				{
+					if(bullet[i].x > (zombie[j].x - zombie[j].boundx) &&
+						bullet[i].x < (zombie[j].x + zombie[j].boundx) &&
+						bullet[i].y > (zombie[j].y - zombie[j].boundy) &&
+						bullet[i].y < (zombie[j].y + zombie[j].boundy))
+					{
+						bullet[i].live = false;
+						zombie[j].live = false;
+
+						gamer.score++;
+					}
+				}
+			}
+		}
+	}
+}
+
+void InitZombie(Zombie zombie[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        zombie[i].ID = ENEMY;
+        zombie[i].live = false;
+        zombie[i].speed = 1;
+        zombie[i].boundx = 3;
+        zombie[i].boundy = 3;
+    }
+}
+void DrawZombie(Zombie zombie[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(zombie[i].live)
+        {
+            al_draw_filled_circle(zombie[i].x, zombie[i].y, 20, al_map_rgb(255, 0, 0));
+        }
+    }
+}
+void StartZombie(Zombie zombie[], int size)
+{
+    for(int k = 0; k < size; k++)
+    {
+        if(!zombie[k].live)
+        {
+                if(rand() % 500 == 0)
+                {
+                    zombie[k].live = true;
+                    zombie[k].x = WIDTH;
+                    zombie[k].y = DISTANCIAYZONE +ZONEY/2 + (rand() % LINHAS)*ZONEY;
+                    break;
+                }
+        }
+    }
+}
+
+void UpdateZombie(Zombie zombie[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(zombie[i].live)
+        {
+            zombie[i].x -= zombie[i].speed;
         }
     }
 }
