@@ -13,6 +13,7 @@ const int COLUNAS = 10;
 const int NUM_BULLETS = 60;
 const int NUM_ENERGYS = 60;
 const int NUM_HEAT = 60;
+const int NUM_BATTERY = 4;
 const int NUM_ZOMBIES = 10;
 const int DISTANCIAYZONE = 120;
 const int ZONEX = WIDTH/COLUNAS;
@@ -20,6 +21,8 @@ const int ZONEY = (HEIGHT-DISTANCIAYZONE)/LINHAS;
 enum KEYS {KEY_1, KEY_2, KEY_3, KEY_4};
 bool keys[4] = {false, false, false, false};
 int timer_tamenho_heat;
+int timer_battery_start;
+int timer_battery_speed;
 
 void InitGamer(Gamer &gamer);
 
@@ -46,6 +49,12 @@ void DrawZombie(Zombie zombie[], int size);
 void StartZombie(Zombie zombie[], int size);
 void UpdateZombie(Zombie zombie[], int size);
 
+void InitBattery(Battery battery[], int size);
+void DrawBattery(Battery battery[], int size);
+void StartBattery(Battery battery[], int size);
+void UpdateBattery(Battery battery[], int size);
+void CaptureBattery(Battery battery[], int size, float mouse_x, float mouse_y, Gamer &gamer);
+
 int main(void)
 {
     bool done = false;
@@ -67,6 +76,7 @@ int main(void)
     Energy energy[NUM_ENERGYS+1];
     Heat heats[NUM_HEAT+1];
     Zombie zombie[NUM_ZOMBIES];
+    Battery battery[NUM_BATTERY];
 
     ALLEGRO_DISPLAY *display = NULL;
     ALLEGRO_EVENT_QUEUE *event_queue = NULL;
@@ -96,6 +106,7 @@ int main(void)
     InitHeat(heats, NUM_HEAT+1);
     InitZombie(zombie, NUM_ZOMBIES);
     InitEnergy(energy, NUM_ENERGYS+1);
+    InitBattery(battery, NUM_BATTERY);
 
     font18 = al_load_font("arial.ttf", 18, 0);
 
@@ -154,6 +165,20 @@ int main(void)
                                     draw[4] = 0;
                                 }
                             }
+            timer_battery_speed++;
+            timer_battery_start++;
+            if(timer_battery_start >= 300) // diminui a frequencia com que nasce uma bateria nova
+            {
+                StartBattery(battery, NUM_BATTERY);
+                timer_battery_start = 0;
+            }
+
+            if(timer_battery_speed >= 2) // reduz um pouco a velocidade da bateria
+            {
+                UpdateBattery(battery, NUM_BATTERY);
+                timer_battery_speed = 0;
+            }
+
 
             timer_heats++;
 
@@ -171,7 +196,7 @@ int main(void)
             for(int i=0; i<LINHAS; i++)
                 for(int j=0; j<COLUNAS; j++)
                     if(zone[i][j].draw == 2)
-                        if(timer_energy >= 200) // faz os Electronics atirarem numa velocidade constante
+                        if(timer_energy >= 240) // faz os Electronics atirarem numa velocidade constante
                         {
                             CreateEnergy(energy, NUM_ENERGYS+1, zone);
                             timer_energy = 0;
@@ -258,6 +283,7 @@ int main(void)
         {
             pos_x = ev.mouse.x;
             pos_y = ev.mouse.y;
+            CaptureBattery(battery, NUM_BATTERY, ev.mouse.x, ev.mouse.y, gamer);
         }
 
         timer_componente++;
@@ -281,6 +307,7 @@ int main(void)
             DrawBullet(bullets, NUM_BULLETS+1);
             DrawEnergy(energy, NUM_ENERGYS+1);
             DrawZombie(zombie, NUM_ZOMBIES);
+            DrawBattery(battery, NUM_BATTERY);
             timer_tamenho_heat++;
             DrawHeat(heats, NUM_HEAT+1, timer_tamenho_heat);
             int vivo = 0;
@@ -315,7 +342,7 @@ int main(void)
 void InitGamer(Gamer &gamer)
 {
     gamer.ID = PLAYER;
-    gamer.energy = 60000;
+    gamer.energy = 6000;
     gamer.lives = 2;
     gamer.score = 0;
 }
@@ -534,4 +561,67 @@ void UpdateZombie(Zombie zombie[], int size)
     for(int i = 0; i < size; i++)
         if(zombie[i].live)
             zombie[i].x -= zombie[i].speed;
+}
+void InitBattery(Battery battery[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        battery[i].ID = ENERGY;
+        battery[i].speed = 1;
+        battery[i].live = false;
+        battery[i].boundx = 20;
+        battery[i].boundy = 20;
+    }
+}
+void DrawBattery(Battery battery[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(battery[i].live)
+            al_draw_filled_circle(battery[i].x, battery[i].y, 7, al_map_rgb(0, 168, 255));
+    }
+}
+void StartBattery(Battery battery[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(!battery[i].live)
+        {
+            battery[i].live = true;
+            battery[i].x = rand() % (WIDTH);
+            battery[i].y = 0;
+            break;
+        }
+    }
+}
+void UpdateBattery(Battery battery[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(battery[i].live)
+            battery[i].y += battery[i].speed;
+        if(battery[i].y > HEIGHT)
+        {
+            battery[i].y = HEIGHT;
+            battery[i].live = false;
+        }
+    }
+}
+void CaptureBattery(Battery battery[], int size, float mouse_x, float mouse_y, Gamer &gamer)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(battery[i].live)
+        {
+            if(mouse_x > (battery[i].x-battery[i].boundy)
+                    && mouse_x < (battery[i].x+battery[i].boundx)
+                    && mouse_y < (battery[i].y+battery[i].boundy)
+                    && mouse_y > (battery[i].y-battery[i].boundy))
+                    {
+                        battery[i].live = false;
+                        gamer.energy += 25;
+                    }
+        }
+
+    }
 }

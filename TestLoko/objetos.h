@@ -39,6 +39,7 @@ struct Zombie
     int x;
     int y;
     bool live;
+    int life;
     int speed;
     int boundx;
     int boundy;
@@ -52,4 +53,16 @@ struct Zone
     int draw;
     int transfer;
 };
+
+struct Battery
+{
+    int ID;
+    int x;
+    int y;
+    bool live;
+    int speed;
+    int boundx;
+    int boundy;
+};
+
 

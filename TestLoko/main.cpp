@@ -3,7 +3,7 @@
 #include <allegro5\allegro_font.h>
 #include <allegro5\allegro_ttf.h>
 #include <stdio.h>
-#include "objects.h"				//Our primitive header file
+#include "objetos.h"				//Our primitive header file
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -12,9 +12,15 @@ const int LINHAS = 6;
 const int COLUNAS = 10;
 const int NUM_BULLETS = 60;
 const int NUM_ZOMBIES = 10;
+const int NUM_BATTERY = 4;
 const int DISTANCIAYZONE = 120;
 const int ZONEX = WIDTH/COLUNAS;
 const int ZONEY = (HEIGHT-DISTANCIAYZONE)/LINHAS;
+int timer_battery_start;
+int timer_battery_speed;
+int timer_zombie_start;
+int timer_zombie_speed;
+int energy_stored = 100;
 
 void InitGamer(Gamer &gamer);
 
@@ -31,6 +37,14 @@ void InitZombie(Zombie zombie[], int size);
 void DrawZombie(Zombie zombie[], int size);
 void StartZombie(Zombie zombie[], int size);
 void UpdateZombie(Zombie zombie[], int size);
+
+void InitBattery(Battery battery[], int size);
+void DrawBattery(Battery battery[], int size);
+void StartBattery(Battery battery[], int size);
+void UpdateBattery(Battery battery[], int size);
+void CaptureBattery(Battery battery[], int size, float mouse_x, float mouse_y);
+
+
 
 int main(void)
 {
@@ -49,6 +63,7 @@ int main(void)
     Zone zone[LINHAS][COLUNAS];
     Bullet bullets[NUM_BULLETS+1];
     Zombie zombie[NUM_ZOMBIES];
+    Battery battery[NUM_BATTERY];
 
     ALLEGRO_DISPLAY *display = NULL;
     ALLEGRO_EVENT_QUEUE *event_queue = NULL;
@@ -76,6 +91,7 @@ int main(void)
     InitZone(zone, LINHAS, COLUNAS);
     InitBullet(bullets, NUM_BULLETS+1);
     InitZombie(zombie, NUM_ZOMBIES);
+    InitBattery(battery, NUM_BATTERY);
 
     font18 = al_load_font("arial.ttf", 18, 0);
 
@@ -99,6 +115,10 @@ int main(void)
         if(ev.type == ALLEGRO_EVENT_TIMER)
         {
             redraw = true;
+            timer_battery_start++;
+            timer_battery_speed++;
+            timer_zombie_start++;
+            timer_zombie_speed++;
 
             for(int i = 0; i < LINHAS; i++)
             {
@@ -111,14 +131,26 @@ int main(void)
                     {
                         if(zone[i][j].draw == 0)
                         {
-                            if(keys[KEY_1])
-                                zone[i][j].draw = draw[0];
-                            if(keys[KEY_2])
-                                zone[i][j].draw = draw[1];
-                            if(keys[KEY_3])
-                                zone[i][j].draw = draw[2];
-                            if(keys[KEY_4])
-                                zone[i][j].draw = draw[3];
+                            if(keys[KEY_1] && energy_stored >= 150) // resistor, custo = 150
+                                {
+                                    zone[i][j].draw = draw[0];
+                                    energy_stored -= 150;
+                                }
+                            if(keys[KEY_2] && energy_stored >= 50) // capacitor, custo = 50
+                                {
+                                    zone[i][j].draw = draw[1];
+                                    energy_stored -= 50;
+                                }
+                            if(keys[KEY_3] && energy_stored >= 100) // indutor, custo = 100
+                                {
+                                    zone[i][j].draw = draw[2];
+                                    energy_stored -= 100;
+                                }
+                            if(keys[KEY_4] && energy_stored >= 50)
+                                {
+                                    zone[i][j].draw = draw[3];
+                                    energy_stored -= 50;
+                                }
                         }
                     }
                 }
@@ -140,9 +172,34 @@ int main(void)
             }
 
             UpdateBullet(bullets, NUM_BULLETS+1);
-            StartZombie(zombie, NUM_ZOMBIES);
-            UpdateZombie(zombie, NUM_ZOMBIES);
+
+            if(timer_zombie_start >= 4) // diminui a frequencia com que nasce zombie
+            {
+                StartZombie(zombie, NUM_ZOMBIES);
+                timer_zombie_start = 0;
+            }
+            if(timer_zombie_speed >= 5) // reduz a velocidade do zombie
+            {
+                UpdateZombie(zombie, NUM_ZOMBIES);
+                timer_zombie_speed = 0;
+            }
+
             CollideBullet(bullets, NUM_BULLETS, zombie, NUM_ZOMBIES, gamer);
+
+            if(timer_battery_start >= 300) // diminui a frequencia com que nasce uma bateria nova
+            {
+                StartBattery(battery, NUM_BATTERY);
+                timer_battery_start = 0;
+            }
+
+            if(timer_battery_speed >= 2) // reduz um pouco a velocidade da bateria
+            {
+                UpdateBattery(battery, NUM_BATTERY);
+                timer_battery_speed = 0;
+            }
+
+
+
         }
         else if(ev.type == ALLEGRO_EVENT_KEY_DOWN)
         {
@@ -197,6 +254,7 @@ int main(void)
         {
             pos_x = ev.mouse.x;
             pos_y = ev.mouse.y;
+            CaptureBattery(battery, NUM_BATTERY, ev.mouse.x, ev.mouse.y);
         }
 
         if(keys[KEY_1])
@@ -214,6 +272,8 @@ int main(void)
             DrawZone(zone, LINHAS, COLUNAS);
             DrawBullet(bullets, NUM_BULLETS+1);
             DrawZombie(zombie, NUM_ZOMBIES);
+            DrawBattery(battery, NUM_BATTERY);
+            al_draw_textf(font18, al_map_rgb(255, 0, 255), 5, 5, 0, "Energia: %i", energy_stored);
             al_draw_filled_rectangle(pos_x, pos_y, pos_x + 10, pos_y + 10, al_map_rgb(0, 0, 0));
             al_flip_display();
             al_clear_to_color(al_map_rgb(255,255,255));
@@ -264,15 +324,13 @@ void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS)
     {
         for(int j = 0; j < COLUNAS; j++)
         {
-            if(zone[i][j].draw == 1)
-            {
+            if(zone[i][j].draw == 1) // desenha um resistor
                 al_draw_filled_rectangle(zone[i][j].x+1, zone[i][j].y+1, zone[i][j].x+ZONEX-1, zone[i][j].y+ZONEY-1,al_map_rgb(255, 0, 0));
-            }
-            if(zone[i][j].draw == 2)
+            if(zone[i][j].draw == 2) // desenha um capacitor
                 al_draw_filled_circle(zone[i][j].x+ZONEX/2, zone[i][j].y+ZONEY/2, ZONEX/4, al_map_rgb(255, 255, 0));
-            if(zone[i][j].draw == 3)
+            if(zone[i][j].draw == 3) // desenha um  indutor
                 al_draw_filled_rectangle(zone[i][j].x+1, zone[i][j].y+1, zone[i][j].x+ZONEX-1, zone[i][j].y+ZONEY-1,al_map_rgb(0, 0, 255));
-            if(zone[i][j].draw == 4)
+            if(zone[i][j].draw == 4) // desenha um diodo
                 al_draw_filled_rectangle(zone[i][j].x+1, zone[i][j].y+1, zone[i][j].x+ZONEX-1, zone[i][j].y+ZONEY-1,al_map_rgb(168, 168, 168));
         }
     }
@@ -303,8 +361,9 @@ void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS])
         {
             if(zone[i][j].draw == 3)
             {
-                for( int k = 0; k < size; k++)
+                for(int k = 0; k < size; k++)
                 {
+
                     if(!bullet[k].live)
                     {
                         bullet[k].x = zone[i][j].x + (ZONEX/2);
@@ -313,10 +372,11 @@ void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS])
                         break;
                     }
                 }
+                }
             }
         }
-    }
 }
+
 
 void UpdateBullet(Bullet bullet[], int size)
 {
@@ -347,7 +407,10 @@ void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer
 						bullet[i].y < (zombie[j].y + zombie[j].boundy))
 					{
 						bullet[i].live = false;
-						zombie[j].live = false;
+						zombie[j].life -= 25;
+
+						if(zombie[j].life <= 0)
+                            zombie[j].live = false;
 
 						gamer.score++;
 					}
@@ -363,7 +426,8 @@ void InitZombie(Zombie zombie[], int size)
     {
         zombie[i].ID = ENEMY;
         zombie[i].live = false;
-        zombie[i].speed = 1;
+        zombie[i].life = 100;
+        zombie[i].speed = 2;
         zombie[i].boundx = 3;
         zombie[i].boundy = 3;
     }
@@ -405,3 +469,67 @@ void UpdateZombie(Zombie zombie[], int size)
         }
     }
 }
+void InitBattery(Battery battery[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        battery[i].ID = ENERGY;
+        battery[i].speed = 1;
+        battery[i].live = false;
+        battery[i].boundx = 20;
+        battery[i].boundy = 20;
+    }
+}
+void DrawBattery(Battery battery[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(battery[i].live)
+            al_draw_filled_circle(battery[i].x, battery[i].y, 7, al_map_rgb(0, 168, 255));
+    }
+}
+void StartBattery(Battery battery[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(!battery[i].live)
+        {
+            battery[i].live = true;
+            battery[i].x = rand() % (WIDTH);
+            battery[i].y = 0;
+            break;
+        }
+    }
+}
+void UpdateBattery(Battery battery[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(battery[i].live)
+            battery[i].y += battery[i].speed;
+        if(battery[i].y > HEIGHT)
+        {
+            battery[i].y = HEIGHT;
+            battery[i].live = false;
+        }
+    }
+}
+void CaptureBattery(Battery battery[], int size, float mouse_x, float mouse_y)
+{
+    for(int i = 0; i < size; i++)
+    {
+        if(battery[i].live)
+        {
+            if(mouse_x > (battery[i].x-battery[i].boundy)
+                    && mouse_x < (battery[i].x+battery[i].boundx)
+                    && mouse_y < (battery[i].y+battery[i].boundy)
+                    && mouse_y > (battery[i].y-battery[i].boundy))
+                    {
+                        battery[i].live = false;
+                        energy_stored += 25;
+                    }
+        }
+
+    }
+}
+
