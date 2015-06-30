@@ -46,6 +46,7 @@ struct Zombie
     int x;
     int y;
     bool live;
+    int life;
     int speed;
     int boundx;
     int boundy;

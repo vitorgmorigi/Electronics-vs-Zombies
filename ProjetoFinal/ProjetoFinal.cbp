@@ -13,11 +13,11 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
-					<Add directory="C:/Users/Sandro/Desktop/allegro5/include" />
+					<Add directory="C:/Users/Vítor/Desktop/allegro5/include" />
 				</Compiler>
 				<Linker>
-					<Add library="C:\Users\Sandro\Desktop\allegro5\lib\liballegro-5.0.10-monolith-mt.a" />
-					<Add directory="C:/Users/Sandro/Desktop/allegro5/lib" />
+					<Add library="C:\Users\Vítor\Desktop\allegro5\lib\liballegro-5.0.10-monolith-mt.a" />
+					<Add directory="C:/Users/Vítor/Desktop/allegro5/lib" />
 				</Linker>
 			</Target>
 			<Target title="Release">
