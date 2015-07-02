@@ -1,4 +1,5 @@
 #include <allegro5\allegro.h>
+#include <allegro5/allegro_image.h>
 #include <allegro5\allegro_primitives.h>
 #include <allegro5\allegro_font.h>
 #include <allegro5\allegro_ttf.h>
@@ -28,12 +29,15 @@ int timer_zombie_start;
 int timer_zombie_speed;
 int timer_collide_diodo;
 int timer_collide_diversos;
+int timer_stop_zombie;
+bool stop_zombie[NUM_ZOMBIES];
 
 void InitGamer(Gamer &gamer);
 
 void InitZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS);
 void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS);
 void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize);
+void CollideZoneDiodo(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize);
 
 void InitBullet(Bullet bullet[], int size);
 void DrawBullet(Bullet bullet[], int size);
@@ -61,6 +65,8 @@ void StartBattery(Battery battery[], int size);
 void UpdateBattery(Battery battery[], int size);
 void CaptureBattery(Battery battery[], int size, float mouse_x, float mouse_y, Gamer &gamer);
 
+int DiodoResistance();
+
 int main(void)
 {
     bool done = false;
@@ -75,6 +81,8 @@ int main(void)
     int timer_tamenho_heat = 0;
     int timer_componente = 0;
     int count = 0;
+    int imageWidth = 0;
+    int imageHeight = 0;
 
     Gamer(gamer);
     Zone zone[LINHAS][COLUNAS];
@@ -88,6 +96,8 @@ int main(void)
     ALLEGRO_EVENT_QUEUE *event_queue = NULL;
     ALLEGRO_TIMER *timer = NULL;
     ALLEGRO_FONT *font18 = NULL;
+    ALLEGRO_BITMAP *image = NULL;
+
 
     if(!al_init())										//initialize Allegro
         return -1;
@@ -102,6 +112,7 @@ int main(void)
     al_init_font_addon();
     al_init_ttf_addon();
     al_install_mouse();
+    al_init_image_addon();
 
     event_queue = al_create_event_queue();
     timer = al_create_timer(1.0 / FPS);
@@ -235,7 +246,7 @@ int main(void)
                 timer_zombie_speed = 0;
             }
 
-            timer_collide_diodo++;
+
             timer_collide_diversos++;
 
 
@@ -243,6 +254,8 @@ int main(void)
             CollideBullet(bullets, NUM_BULLETS, zombie, NUM_ZOMBIES, gamer);
             CollideHeat(heats, NUM_HEAT, zombie, NUM_ZOMBIES, gamer, timer_tamenho_heat);
             CollideZone(zone, LINHAS, COLUNAS, zombie, NUM_ZOMBIES);
+            CollideZoneDiodo(zone, LINHAS, COLUNAS, zombie, NUM_ZOMBIES);
+
 
             for(int i = 0; i < NUM_ENERGYS; i++)
                 if(energy[i].live)
@@ -336,16 +349,17 @@ int main(void)
             timer_tamenho_heat++;
             DrawHeat(heats, NUM_HEAT+1, timer_tamenho_heat);
             int vivo = 0;
-            for(int i=0; i<NUM_HEAT; i++){
-                    if(heats[i].live)
-                        vivo++;
+            for(int i=0; i<NUM_HEAT; i++)
+            {
+                if(heats[i].live)
+                    vivo++;
             }
             if(timer_tamenho_heat > 80)
                 for(int i=0; i<NUM_HEAT; i++)
-            {
-                heats[i].live = false;
-                timer_tamenho_heat = 0;
-            }
+                {
+                    heats[i].live = false;
+                    timer_tamenho_heat = 0;
+                }
             al_draw_filled_rectangle(pos_x, pos_y, pos_x + 10, pos_y + 10, al_map_rgb(0, 0, 0));
             count++;
             al_draw_textf(font18, al_map_rgb(0, 0, 0), WIDTH*13/16, 30, 0, "Time: %i", count/60);
@@ -359,6 +373,7 @@ int main(void)
     al_destroy_event_queue(event_queue);
     al_destroy_timer(timer);
     al_destroy_font(font18);
+    al_destroy_bitmap(image);
     al_destroy_display(display);						//destroy our display object
 
     return 0;
@@ -367,7 +382,7 @@ int main(void)
 void InitGamer(Gamer &gamer)
 {
     gamer.ID = PLAYER;
-    gamer.energy = 25;
+    gamer.energy = 200;
     gamer.lives = 2;
     gamer.score = 0;
 }
@@ -407,7 +422,7 @@ void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[],
 {
     for(int i = 0; i < LINHAS; i++)
         for(int j = 0; j < COLUNAS; j++)
-         for(int k = 0; k < cSize; k++)
+            for(int k = 0; k < cSize; k++)
                 if(zombie[k].live)
                     if(zone[i][j].x + ZONEX/2 > (zombie[k].x - zombie[k].boundx) &&
                             zone[i][j].x + ZONEX/2 < (zombie[k].x + zombie[k].boundx) &&
@@ -416,10 +431,37 @@ void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[],
                     {
                         if((zone[i][j].draw >= 1) && (zone[i][j].draw <= 3))
                             zone[i][j].draw = 0;
-                        if(zone[i][j].draw == 4)
-                            zone[i][j].draw = 0;
+
                     }
 
+}
+void CollideZoneDiodo(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize)
+{
+    for(int i = 0; i < LINHAS; i++)
+        for(int j = 0; j < COLUNAS; j++)
+            for(int k = 0; k < cSize; k++)
+            {
+                if(zombie[k].live)
+                    if(zone[i][j].x + ZONEX/2 > (zombie[k].x - zombie[k].boundx) &&
+                            zone[i][j].x + ZONEX/2 < (zombie[k].x + zombie[k].boundx) &&
+                            zone[i][j].y + ZONEY/2 > (zombie[k].y - zombie[k].boundy) &&
+                            zone[i][j].y + ZONEY/2 < (zombie[k].y + zombie[k].boundy))
+                        if(zone[i][j].draw == 4)
+                        {
+                            stop_zombie[k] = true;
+
+                        }
+            }
+
+}
+int DiodoResistance()
+{
+    if(stop_zombie)
+    {
+        return 1;
+    }
+    else
+        return 0;
 }
 
 void InitBullet(Bullet bullet[], int size)
@@ -476,14 +518,14 @@ void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer
                             bullet[i].y > (zombie[j].y - zombie[j].boundy) &&
                             bullet[i].y < (zombie[j].y + zombie[j].boundy))
                     {
-						bullet[i].live = false;
-						zombie[j].life -= 25;
+                        bullet[i].live = false;
+                        zombie[j].life -= 25;
 
-						if(zombie[j].life <= 0)
+                        if(zombie[j].life <= 0)
                             zombie[j].live = false;
 
-						gamer.score++;
-					}
+                        gamer.score++;
+                    }
 }
 
 void InitEnergy(Energy energy[], int size)
@@ -578,7 +620,7 @@ void InitZombie(Zombie zombie[], int size)
         zombie[i].speed = 1;
         zombie[i].live = false;
         zombie[i].life = 100;
-        zombie[i].boundx = 5;
+        zombie[i].boundx = 50;
         zombie[i].boundy = 5;
     }
 }
@@ -607,7 +649,15 @@ void UpdateZombie(Zombie zombie[], int size)
 {
     for(int i = 0; i < size; i++)
         if(zombie[i].live)
-            zombie[i].x -= zombie[i].speed;
+        {
+            if(stop_zombie[i])
+                zombie[i].speed = 0;
+            else
+            {
+                zombie[i].x -= zombie[i].speed;
+            }
+        }
+
 }
 void InitBattery(Battery battery[], int size)
 {
@@ -645,6 +695,7 @@ void UpdateBattery(Battery battery[], int size)
 {
     for(int i = 0; i < size; i++)
     {
+
         if(battery[i].live)
             battery[i].y += battery[i].speed;
         if(battery[i].y > HEIGHT)
@@ -664,10 +715,10 @@ void CaptureBattery(Battery battery[], int size, float mouse_x, float mouse_y, G
                     && mouse_x < (battery[i].x+battery[i].boundx)
                     && mouse_y < (battery[i].y+battery[i].boundy)
                     && mouse_y > (battery[i].y-battery[i].boundy))
-                    {
-                        battery[i].live = false;
-                        gamer.energy += 25;
-                    }
+            {
+                battery[i].live = false;
+                gamer.energy += 25;
+            }
         }
 
     }
