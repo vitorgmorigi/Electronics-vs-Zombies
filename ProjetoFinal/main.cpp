@@ -40,14 +40,14 @@ void InitGamer(Gamer &gamer);
 
 void InitZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS);
 void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, ALLEGRO_BITMAP *resistor, ALLEGRO_BITMAP *capacitor, ALLEGRO_BITMAP *indutor, ALLEGRO_BITMAP *diodo);
-void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize, Zombie SpecZombie[], int dSize);
+void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize);
 void CollideZoneDiodo(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize);
 
 void InitBullet(Bullet bullet[], int size);
 void DrawBullet(Bullet bullet[], int size, ALLEGRO_BITMAP *ataque_eletromagnetico);
 void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS]);
 void UpdateBullet(Bullet bullet[], int size);
-void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer, Zombie SpecZombie[], int dSize);
+void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer);
 
 void InitEnergy(Energy energy[], int size);
 void DrawEnergy(Energy energy[], int size, ALLEGRO_BITMAP *energia_capacitor);
@@ -62,11 +62,6 @@ void InitZombie(Zombie zombie[], int size);
 void DrawZombie(Zombie zombie[], int size, ALLEGRO_BITMAP *zombie_bitmap);
 void StartZombie(Zombie zombie[], int size);
 void UpdateZombie(Zombie zombie[], int size);
-
-void InitSpecZombie(Zombie SpecZombie[], int size);
-void DrawSpecZombie(Zombie SpecZombie[], int size, ALLEGRO_BITMAP *zombie_bitmap_spec);
-void StartSpecZombie(Zombie SpecZombie[], int size);
-void UpdateSpecZombie(Zombie SpecZombie[], int size);
 
 void InitBattery(Battery battery[], int size);
 void DrawBattery(Battery battery[], int size, ALLEGRO_BITMAP *bateria);
@@ -96,7 +91,6 @@ int main(void)
     Energy energy[NUM_ENERGYS+1];
     Heat heats[NUM_HEAT+1];
     Zombie zombie[NUM_ZOMBIES];
-    Zombie SpecZombie[NUM_SPEC_ZOMBIES];
     Battery battery[NUM_BATTERY];
 
 
@@ -115,7 +109,6 @@ int main(void)
     ALLEGRO_BITMAP *zombie_bitmap = NULL;
     ALLEGRO_BITMAP *ataque_eletromagnetico = NULL;
     ALLEGRO_BITMAP *energia_capacitor = NULL;
-    ALLEGRO_BITMAP *zombie_bitmap_spec = NULL;
     ALLEGRO_BITMAP *logo = NULL;
 
 
@@ -144,7 +137,6 @@ int main(void)
     zombie_bitmap = al_load_bitmap("Zombie.png");
     ataque_eletromagnetico = al_load_bitmap("eletromagnetismo.jpg");
     energia_capacitor = al_load_bitmap("energia_capacitor.png");
-    zombie_bitmap_spec = al_load_bitmap("zombie_especial.gif");
     logo = al_load_bitmap("logo_EvsZ.jpg");
 
     al_convert_mask_to_alpha(resistor, al_map_rgb(255, 0, 255));
@@ -154,7 +146,6 @@ int main(void)
     al_convert_mask_to_alpha(bateria, al_map_rgb(255, 0, 255));
     al_convert_mask_to_alpha(zombie_bitmap, al_map_rgb(255, 255, 255));
     al_convert_mask_to_alpha(ataque_eletromagnetico, al_map_rgb(255, 255, 255));
-    al_convert_mask_to_alpha(zombie_bitmap_spec, al_map_rgb(255, 0, 255));
 
 
     event_queue = al_create_event_queue();
@@ -165,7 +156,6 @@ int main(void)
     InitBullet(bullets, NUM_BULLETS+1);
     InitHeat(heats, NUM_HEAT+1);
     InitZombie(zombie, NUM_ZOMBIES);
-    InitSpecZombie(SpecZombie, NUM_SPEC_ZOMBIES);
     InitEnergy(energy, NUM_ENERGYS+1);
     InitBattery(battery, NUM_BATTERY);
 
@@ -310,22 +300,12 @@ int main(void)
                     UpdateZombie(zombie, NUM_ZOMBIES);
                     timer_zombie_speed = 0;
                 }
-                if((count/60) >= 5)
-                {
-                    timer_spec_zombie_speed++;
-                    StartSpecZombie(SpecZombie, NUM_SPEC_ZOMBIES);
-                    if(timer_spec_zombie_speed >= 4)
-                    {
-                        UpdateSpecZombie(SpecZombie, NUM_SPEC_ZOMBIES);
-                        timer_spec_zombie_speed = 0;
-                    }
 
-                }
 
                 UpdateBullet(bullets, NUM_BULLETS+1);
-                CollideBullet(bullets, NUM_BULLETS, zombie, NUM_ZOMBIES, gamer, SpecZombie, NUM_SPEC_ZOMBIES);
+                CollideBullet(bullets, NUM_BULLETS, zombie, NUM_ZOMBIES, gamer);
                 CollideHeat(heats, NUM_HEAT, zombie, NUM_ZOMBIES, gamer, timer_tamenho_heat);
-                CollideZone(zone, LINHAS, COLUNAS, zombie, NUM_ZOMBIES, SpecZombie, NUM_SPEC_ZOMBIES);
+                CollideZone(zone, LINHAS, COLUNAS, zombie, NUM_ZOMBIES);
                 CollideZoneDiodo(zone, LINHAS, COLUNAS, zombie, NUM_ZOMBIES);
 
 
@@ -422,7 +402,6 @@ int main(void)
                 DrawBullet(bullets, NUM_BULLETS+1, ataque_eletromagnetico);
                 DrawEnergy(energy, NUM_ENERGYS+1, energia_capacitor);
                 DrawZombie(zombie, NUM_ZOMBIES, zombie_bitmap);
-                DrawSpecZombie(SpecZombie, NUM_SPEC_ZOMBIES, zombie_bitmap_spec);
                 DrawBattery(battery, NUM_BATTERY, bateria);
                 timer_tamenho_heat++;
                 DrawHeat(heats, NUM_HEAT+1, timer_tamenho_heat, fogo);
@@ -469,7 +448,6 @@ int main(void)
                 al_destroy_bitmap(bateria);
                 al_destroy_bitmap(protoboard);
                 al_destroy_bitmap(zombie_bitmap);
-                al_destroy_bitmap(zombie_bitmap_spec);
                 al_destroy_display(display);
 
             }
@@ -523,7 +501,7 @@ void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, ALLEGRO_BITMAP *res
                 al_draw_bitmap(diodo, zone[i][j].x+1, zone[i][j].y+10, 0);
         }
 }
-void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize, Zombie SpecZombie[], int dSize)
+void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize)
 {
     for(int i = 0; i < LINHAS; i++)
         for(int j = 0; j < COLUNAS; j++)
@@ -540,16 +518,7 @@ void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[],
                             zone[i][j].draw = 0;
 
                     }
-                for(int h = 0; h < dSize; h++)
-                    if((zone[i][j].x + ZONEX/2 > (SpecZombie[h].x - SpecZombie[h].boundx) &&
-                            zone[i][j].x + ZONEX/2 < (SpecZombie[h].x + SpecZombie[h].boundx) &&
-                            zone[i][j].y + ZONEY/2 > (SpecZombie[h].y - SpecZombie[h].boundy) &&
-                            zone[i][j].y + ZONEY/2 < (SpecZombie[h].y + SpecZombie[h].boundy)
-                       ))
-                    {
-                        if((zone[i][j].draw >= 1) && (zone[i][j].draw <= 3))
-                            zone[i][j].draw = 0;
-                    }
+
             }
 
 }
@@ -625,7 +594,7 @@ void UpdateBullet(Bullet bullet[], int size)
         }
 }
 
-void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer, Zombie SpecZombie[], int dSize)
+void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer)
 {
     for(int i = 0; i < bSize; i++)
         if(bullet[i].live)
@@ -645,24 +614,7 @@ void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer
 
                         gamer.score++;
                     }
-                for(int k = 0; k < dSize; k++)
-                    for(int h = 0; h < bSize; h++)
-                    {
-                        if(SpecZombie[k].live)
-                            if(bullet[h].x > (SpecZombie[k].x - SpecZombie[k].boundx) &&
-                                    bullet[h].x < (SpecZombie[k].x + SpecZombie[k].boundx) &&
-                                    bullet[h].y > (SpecZombie[k].y - SpecZombie[k].boundy) &&
-                                    bullet[h].y < (SpecZombie[k].y + SpecZombie[k].boundy))
-                            {
-                                SpecZombie[k].life -= 25;
-                                bullet[h].live = false;
 
-
-                                if(SpecZombie[k].life <= 0)
-                                    SpecZombie[k].live = false;
-                            }
-
-                    }
             }
 }
 
@@ -794,45 +746,7 @@ void UpdateZombie(Zombie zombie[], int size)
     }
 
 }
-void InitSpecZombie(Zombie SpecZombie[], int size)
-{
-    for(int i = 0; i < size; i++)
-    {
-        SpecZombie[i].ID = ENEMY;
-        SpecZombie[i].live = false;
-        SpecZombie[i].speed = 2;
-        SpecZombie[i].life = 150;
-        SpecZombie[i].boundx = 50;
-        SpecZombie[i].boundy = 5;
 
-    }
-}
-void DrawSpecZombie(Zombie SpecZombie[], int size, ALLEGRO_BITMAP *zombie_bitmap_spec)
-{
-    for(int i = 0; i < size; i++)
-        if(SpecZombie[i].live)
-            al_draw_bitmap(zombie_bitmap_spec, SpecZombie[i].x, SpecZombie[i].y-40, 0);
-}
-void StartSpecZombie(Zombie SpecZombie[], int size)
-{
-    for(int k = 0; k < size; k++)
-        if(!SpecZombie[k].live)
-            if(rand() % 500 == 0)
-            {
-                SpecZombie[k].live = true;
-                SpecZombie[k].x = WIDTH;
-                SpecZombie[k].y = DISTANCIAYZONE +ZONEY/2 + (rand() % LINHAS)*ZONEY;
-                break;
-            }
-}
-void UpdateSpecZombie(Zombie SpecZombie[], int size)
-{
-    for(int i = 0; i < size; i++)
-        if(SpecZombie[i].live)
-        {
-            SpecZombie[i].x -= SpecZombie[i].speed;
-        }
-}
 void InitBattery(Battery battery[], int size)
 {
     for(int i = 0; i < size; i++)
