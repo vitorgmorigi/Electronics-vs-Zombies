@@ -20,6 +20,7 @@ const int DISTANCIAYZONE = 120;
 const int ZONEX = WIDTH/COLUNAS;
 const int ZONEY = (HEIGHT-DISTANCIAYZONE)/LINHAS;
 enum KEYS {KEY_1, KEY_2, KEY_3, KEY_4};
+enum STATE {MENU, PLAYING, GAMEOVER};
 bool keys[4] = {false, false, false, false};
 int timer_tamenho_heat;
 int timer_battery_start;
@@ -30,42 +31,39 @@ int timer_zombie_speed;
 int timer_collide_diodo;
 int timer_collide_diversos;
 int timer_stop_zombie;
-bool stop_zombie[NUM_ZOMBIES];
 
 void InitGamer(Gamer &gamer);
 
 void InitZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS);
-void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS);
+void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, ALLEGRO_BITMAP *resistor, ALLEGRO_BITMAP *capacitor, ALLEGRO_BITMAP *indutor, ALLEGRO_BITMAP *diodo);
 void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize);
 void CollideZoneDiodo(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize);
 
 void InitBullet(Bullet bullet[], int size);
-void DrawBullet(Bullet bullet[], int size);
+void DrawBullet(Bullet bullet[], int size, ALLEGRO_BITMAP *ataque_eletromagnetico);
 void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS]);
 void UpdateBullet(Bullet bullet[], int size);
 void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer);
 
 void InitEnergy(Energy energy[], int size);
-void DrawEnergy(Energy energy[], int size);
+void DrawEnergy(Energy energy[], int size, ALLEGRO_BITMAP *energia_capacitor);
 void CreateEnergy(Energy energy[], int size, Zone zone[][COLUNAS]);
 
 void InitHeat(Heat heat[], int size);
-void DrawHeat(Heat heat[], int size, int tamanho);
+void DrawHeat(Heat heat[], int size, int tamanho, ALLEGRO_BITMAP *fogo);
 void FireHeat(Heat heat[], int size, Zone zone[][COLUNAS]);
 void CollideHeat(Heat heat[], int bSize, Zombie zombie[], int cSize, Gamer &gamer, int tamanho);
 
 void InitZombie(Zombie zombie[], int size);
-void DrawZombie(Zombie zombie[], int size);
+void DrawZombie(Zombie zombie[], int size, ALLEGRO_BITMAP *zombie_bitmap);
 void StartZombie(Zombie zombie[], int size);
 void UpdateZombie(Zombie zombie[], int size);
 
 void InitBattery(Battery battery[], int size);
-void DrawBattery(Battery battery[], int size);
+void DrawBattery(Battery battery[], int size, ALLEGRO_BITMAP *bateria);
 void StartBattery(Battery battery[], int size);
 void UpdateBattery(Battery battery[], int size);
 void CaptureBattery(Battery battery[], int size, float mouse_x, float mouse_y, Gamer &gamer);
-
-int DiodoResistance();
 
 int main(void)
 {
@@ -81,8 +79,7 @@ int main(void)
     int timer_tamenho_heat = 0;
     int timer_componente = 0;
     int count = 0;
-    int imageWidth = 0;
-    int imageHeight = 0;
+
 
     Gamer(gamer);
     Zone zone[LINHAS][COLUNAS];
@@ -92,11 +89,22 @@ int main(void)
     Zombie zombie[NUM_ZOMBIES];
     Battery battery[NUM_BATTERY];
 
+    int state = MENU;
+
     ALLEGRO_DISPLAY *display = NULL;
     ALLEGRO_EVENT_QUEUE *event_queue = NULL;
     ALLEGRO_TIMER *timer = NULL;
     ALLEGRO_FONT *font18 = NULL;
-    ALLEGRO_BITMAP *image = NULL;
+    ALLEGRO_BITMAP *resistor = NULL;
+    ALLEGRO_BITMAP *capacitor = NULL;
+    ALLEGRO_BITMAP *indutor = NULL;
+    ALLEGRO_BITMAP *diodo = NULL;
+    ALLEGRO_BITMAP *bateria = NULL;
+    ALLEGRO_BITMAP *protoboard = NULL;
+    ALLEGRO_BITMAP *fogo = NULL;
+    ALLEGRO_BITMAP *zombie_bitmap = NULL;
+    ALLEGRO_BITMAP *ataque_eletromagnetico = NULL;
+    ALLEGRO_BITMAP *energia_capacitor = NULL;
 
 
     if(!al_init())										//initialize Allegro
@@ -113,6 +121,26 @@ int main(void)
     al_init_ttf_addon();
     al_install_mouse();
     al_init_image_addon();
+
+    resistor = al_load_bitmap("Resistor.png");
+    capacitor = al_load_bitmap("Capacitor.png");
+    indutor = al_load_bitmap("Indutor.png");
+    diodo = al_load_bitmap("Diodo.png");
+    bateria = al_load_bitmap("Bateria.png");
+    protoboard = al_load_bitmap("Protoboard.png");
+    fogo = al_load_bitmap("fogo_resistor/fire1.png");
+    zombie_bitmap = al_load_bitmap("Zombie.png");
+    ataque_eletromagnetico = al_load_bitmap("eletromagnetismo.jpg");
+    energia_capacitor = al_load_bitmap("energia_capacitor.png");
+
+    al_convert_mask_to_alpha(resistor, al_map_rgb(255, 0, 255));
+    al_convert_mask_to_alpha(capacitor, al_map_rgb(255, 0, 255));
+    al_convert_mask_to_alpha(indutor, al_map_rgb(255, 0, 255));
+    al_convert_mask_to_alpha(diodo, al_map_rgb(255, 0, 255));
+    al_convert_mask_to_alpha(bateria, al_map_rgb(255, 0, 255));
+    al_convert_mask_to_alpha(zombie_bitmap, al_map_rgb(255, 255, 255));
+    al_convert_mask_to_alpha(ataque_eletromagnetico, al_map_rgb(255, 255, 255));
+
 
     event_queue = al_create_event_queue();
     timer = al_create_timer(1.0 / FPS);
@@ -138,6 +166,7 @@ int main(void)
     while(!done)
     {
         ALLEGRO_EVENT ev;
+
         al_wait_for_event(event_queue, &ev);
 
         if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
@@ -147,6 +176,7 @@ int main(void)
         if(ev.type == ALLEGRO_EVENT_TIMER)
         {
             redraw = true;
+
 
             for(int i = 0; i < LINHAS; i++)
                 for(int j=0; j<COLUNAS; j++)
@@ -341,39 +371,41 @@ int main(void)
         if(redraw && al_is_event_queue_empty(event_queue))
         {
             redraw = false;
-            DrawZone(zone, LINHAS, COLUNAS);
-            DrawBullet(bullets, NUM_BULLETS+1);
-            DrawEnergy(energy, NUM_ENERGYS+1);
-            DrawZombie(zombie, NUM_ZOMBIES);
-            DrawBattery(battery, NUM_BATTERY);
+
+
+            DrawZone(zone, LINHAS, COLUNAS, resistor, capacitor, indutor, diodo);
+            DrawBullet(bullets, NUM_BULLETS+1, ataque_eletromagnetico);
+            DrawEnergy(energy, NUM_ENERGYS+1, energia_capacitor);
+            DrawZombie(zombie, NUM_ZOMBIES, zombie_bitmap);
+            DrawBattery(battery, NUM_BATTERY, bateria);
             timer_tamenho_heat++;
-            DrawHeat(heats, NUM_HEAT+1, timer_tamenho_heat);
-            int vivo = 0;
-            for(int i=0; i<NUM_HEAT; i++)
-            {
-                if(heats[i].live)
-                    vivo++;
-            }
+            DrawHeat(heats, NUM_HEAT+1, timer_tamenho_heat, fogo);
             if(timer_tamenho_heat > 80)
                 for(int i=0; i<NUM_HEAT; i++)
                 {
                     heats[i].live = false;
                     timer_tamenho_heat = 0;
                 }
+
+
             al_draw_filled_rectangle(pos_x, pos_y, pos_x + 10, pos_y + 10, al_map_rgb(0, 0, 0));
             count++;
-            al_draw_textf(font18, al_map_rgb(0, 0, 0), WIDTH*13/16, 30, 0, "Time: %i", count/60);
-            al_draw_textf(font18, al_map_rgb(0, 0, 0), WIDTH*13/16, 10, 0, "Energy: %i", gamer.energy);
-            al_draw_textf(font18, al_map_rgb(0, 0, 0), WIDTH*1/16, 10, 0, "vivos: %i", vivo);
+            al_draw_textf(font18, al_map_rgb(255, 0, 0), WIDTH*13/16, 85, 0, "Time: %i", count/60);
+            al_draw_textf(font18, al_map_rgb(255, 0, 0), WIDTH*13/20, 85, 0, "Energy: %i", gamer.energy);
             al_flip_display();
-            al_clear_to_color(al_map_rgb(255,255,255));
+            al_draw_bitmap(protoboard, 0, 0, 0);
         }
     }
 
     al_destroy_event_queue(event_queue);
     al_destroy_timer(timer);
     al_destroy_font(font18);
-    al_destroy_bitmap(image);
+    al_destroy_bitmap(resistor);
+    al_destroy_bitmap(capacitor);
+    al_destroy_bitmap(indutor);
+    al_destroy_bitmap(diodo);
+    al_destroy_bitmap(bateria);
+    al_destroy_bitmap(protoboard);
     al_destroy_display(display);						//destroy our display object
 
     return 0;
@@ -399,7 +431,7 @@ void InitZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS)
         }
 }
 
-void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS)
+void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, ALLEGRO_BITMAP *resistor, ALLEGRO_BITMAP *capacitor, ALLEGRO_BITMAP *indutor, ALLEGRO_BITMAP *diodo)
 {
     for(int i = 0; i < LINHAS; i++)
         for(int j = 0; j < COLUNAS; j++)
@@ -409,13 +441,13 @@ void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS)
         for(int j = 0; j < COLUNAS; j++)
         {
             if(zone[i][j].draw == 1)
-                al_draw_filled_rectangle(zone[i][j].x+1, zone[i][j].y+1, zone[i][j].x+ZONEX-1, zone[i][j].y+ZONEY-1,al_map_rgb(255, 0, 0));
+                al_draw_bitmap(resistor, zone[i][j].x+10, zone[i][j].y+1, 0);
             if(zone[i][j].draw == 2)
-                al_draw_filled_circle(zone[i][j].x+ZONEX/2, zone[i][j].y+ZONEY/2, ZONEX/4, al_map_rgb(255, 255, 0));
+                al_draw_bitmap(capacitor, zone[i][j].x+10, zone[i][j].y+10, 0);
             if(zone[i][j].draw == 3)
-                al_draw_filled_rectangle(zone[i][j].x+1, zone[i][j].y+1, zone[i][j].x+ZONEX-1, zone[i][j].y+ZONEY-1,al_map_rgb(0, 0, 255));
+                al_draw_bitmap(indutor, zone[i][j].x+2, zone[i][j].y+10, 0);
             if(zone[i][j].draw == 4)
-                al_draw_filled_rectangle(zone[i][j].x+1, zone[i][j].y+1, zone[i][j].x+ZONEX-1, zone[i][j].y+ZONEY-1,al_map_rgb(168, 168, 168));
+                al_draw_bitmap(diodo, zone[i][j].x+1, zone[i][j].y+10, 0);
         }
 }
 void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize)
@@ -448,20 +480,20 @@ void CollideZoneDiodo(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zomb
                             zone[i][j].y + ZONEY/2 < (zombie[k].y + zombie[k].boundy))
                         if(zone[i][j].draw == 4)
                         {
-                            stop_zombie[k] = true;
+                                zombie[k].speed = 0;
+                                timer_collide_diodo++;
+                                if(timer_collide_diodo >= 600)
+                                    {
+                                        zone[i][j].draw = 0;
+                                        for(int c = 0; c < cSize; c++)
+                                            zombie[c].speed = 1;
+
+                                        timer_collide_diodo = 0;
+                                    }
 
                         }
             }
 
-}
-int DiodoResistance()
-{
-    if(stop_zombie)
-    {
-        return 1;
-    }
-    else
-        return 0;
 }
 
 void InitBullet(Bullet bullet[], int size)
@@ -474,11 +506,11 @@ void InitBullet(Bullet bullet[], int size)
     }
 }
 
-void DrawBullet(Bullet bullet[], int size)
+void DrawBullet(Bullet bullet[], int size, ALLEGRO_BITMAP *ataque_eletromagnetico)
 {
     for(int i = 0; i < size; i++)
         if(bullet[i].live)
-            al_draw_filled_circle(bullet[i].x, bullet[i].y, 5, al_map_rgb(255, 255, 0));
+            al_draw_bitmap(ataque_eletromagnetico, bullet[i].x, bullet[i].y-20, 0);
 }
 
 void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS])
@@ -535,17 +567,17 @@ void InitEnergy(Energy energy[], int size)
         energy[i].ID = ENERGY;
         energy[i].speed = 1;
         energy[i].live = false;
-        energy[i].boundx = 5;
-        energy[i].boundy = 5;
+        energy[i].boundx = 20;
+        energy[i].boundy = 20;
     }
 }
 
 
-void DrawEnergy(Energy energy[], int size)
+void DrawEnergy(Energy energy[], int size, ALLEGRO_BITMAP *energia_capacitor)
 {
     for(int i = 0; i < size; i++)
         if(energy[i].live)
-            al_draw_filled_circle(energy[i].x, energy[i].y, 5, al_map_rgb(0, 255, 0));
+            al_draw_bitmap(energia_capacitor, energy[i].x-10, energy[i].y-30, 0);
 }
 
 void CreateEnergy(Energy energy[], int size, Zone zone[][COLUNAS])
@@ -569,16 +601,16 @@ void InitHeat(Heat heats[], int size)
     {
         heats[i].ID = HEAT;
         heats[i].live = false;
-        heats[i].boundx = 80;
+        heats[i].boundx = 25;
         heats[i].boundy = 80;
     }
 }
 
-void DrawHeat(Heat heats[], int size, int tamanho)
+void DrawHeat(Heat heats[], int size, int tamanho, ALLEGRO_BITMAP *fogo)
 {
     for(int i = 0; i < size; i++)
         if(heats[i].live)
-            al_draw_filled_circle(heats[i].x, heats[i].y, tamanho, al_map_rgb(255, 255, 0));
+            al_draw_bitmap(fogo, heats[i].x-50, heats[i].y-75, 0);
 }
 
 void FireHeat(Heat heats[], int size, Zone zone[][COLUNAS])
@@ -625,11 +657,11 @@ void InitZombie(Zombie zombie[], int size)
     }
 }
 
-void DrawZombie(Zombie zombie[], int size)
+void DrawZombie(Zombie zombie[], int size, ALLEGRO_BITMAP *zombie_bitmap)
 {
     for(int i = 0; i < size; i++)
         if(zombie[i].live)
-            al_draw_filled_circle(zombie[i].x, zombie[i].y, 20, al_map_rgb(255, 0, 0));
+            al_draw_bitmap(zombie_bitmap, zombie[i].x, zombie[i].y-40, 0);
 }
 
 void StartZombie(Zombie zombie[], int size)
@@ -650,12 +682,7 @@ void UpdateZombie(Zombie zombie[], int size)
     for(int i = 0; i < size; i++)
         if(zombie[i].live)
         {
-            if(stop_zombie[i])
-                zombie[i].speed = 0;
-            else
-            {
-                zombie[i].x -= zombie[i].speed;
-            }
+            zombie[i].x -= zombie[i].speed;
         }
 
 }
@@ -666,16 +693,16 @@ void InitBattery(Battery battery[], int size)
         battery[i].ID = ENERGY;
         battery[i].speed = 1;
         battery[i].live = false;
-        battery[i].boundx = 20;
-        battery[i].boundy = 20;
+        battery[i].boundx = 120;
+        battery[i].boundy = 40;
     }
 }
-void DrawBattery(Battery battery[], int size)
+void DrawBattery(Battery battery[], int size, ALLEGRO_BITMAP *bateria)
 {
     for(int i = 0; i < size; i++)
     {
         if(battery[i].live)
-            al_draw_filled_circle(battery[i].x, battery[i].y, 7, al_map_rgb(0, 168, 255));
+            al_draw_bitmap(bateria, battery[i].x, battery[i].y, 0);
     }
 }
 void StartBattery(Battery battery[], int size)
