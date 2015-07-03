@@ -16,7 +16,6 @@ const int NUM_ENERGYS = 60;
 const int NUM_HEAT = 60;
 const int NUM_BATTERY = 4;
 int NUM_ZOMBIES = 10;
-int NUM_SPEC_ZOMBIES = 6;
 const int DISTANCIAYZONE = 120;
 const int ZONEX = WIDTH/COLUNAS;
 const int ZONEY = (HEIGHT-DISTANCIAYZONE)/LINHAS;
@@ -34,6 +33,8 @@ int timer_collide_diodo;
 int timer_collide_diversos;
 int timer_stop_zombie;
 int state = MENU;
+int dificuldade = 500;
+int timer_dificuldade;
 
 
 void InitGamer(Gamer &gamer);
@@ -71,9 +72,9 @@ void CaptureBattery(Battery battery[], int size, float mouse_x, float mouse_y, G
 
 int main(void)
 {
-    bool done = false;
-    bool redraw = true;
-    bool desenha = false;
+    bool done = false; // Variavel booleana para identificar se o programa terminou de ser executado
+    bool redraw = true; // Enquanto essa variavel for verdadeira, ira ser desenhado algo na tela
+    bool desenha = true;
     int draw[5]= {0, 0, 0, 0, 0};
     int pos_x = WIDTH / 2;
     int pos_y = HEIGHT / 2;
@@ -272,7 +273,7 @@ int main(void)
                     for(int j=0; j<COLUNAS; j++)
                         if(zone[i][j].draw == 2)
                         {
-                            if(timer_energy >= 360)
+                            if(timer_energy >= 420)
                             {
                                 CreateEnergy(energy, NUM_ENERGYS+1, zone);
                                 timer_energy = 0;
@@ -292,12 +293,21 @@ int main(void)
                             }
                 timer_zombie_start++;
                 timer_zombie_speed++;
+                timer_dificuldade++;
                 if(timer_zombie_start >= 3)
                 {
                     StartZombie(zombie, NUM_ZOMBIES);
                     timer_zombie_start = 0;
                 }
-                if(timer_zombie_speed >= 4)
+                if(dificuldade >20 && dificuldade <=500)
+                {
+                if(timer_dificuldade >= 300)
+                    {
+                        dificuldade -= 30;
+                        timer_dificuldade = 0;
+                    }
+                }
+                if(timer_zombie_speed >= 3)
                 {
                     UpdateZombie(zombie, NUM_ZOMBIES);
                     timer_zombie_speed = 0;
@@ -335,8 +345,7 @@ int main(void)
                     keys[KEY_1] = true;
                     break;
                 case ALLEGRO_KEY_2:
-                    keys[KEY_2] = true;al_draw_text(font18, al_map_rgb(255, 255, 255), WIDTH / 2, HEIGHT / 2, ALLEGRO_ALIGN_CENTRE, "Press Space to Play");
-
+                    keys[KEY_2] = true;
                     break;
                 case ALLEGRO_KEY_3:
                     keys[KEY_3] = true;
@@ -369,9 +378,7 @@ int main(void)
             }
             else if(ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
             {
-                if(ev.mouse.button & 1)
-                    desenha = !desenha;
-                else if (ev.mouse.button & 2)
+                if (ev.mouse.button & 2)
                     done = true;
             }
             else if(ev.type == ALLEGRO_EVENT_MOUSE_AXES)
@@ -383,7 +390,7 @@ int main(void)
 
             timer_componente++;
 
-            if(timer_componente >= 120) // faz os Electronics atirarem numa velocidade constante
+            if(timer_componente >= 10)
             {
                 if(keys[KEY_1])
                     draw[1] = 1;
@@ -710,7 +717,7 @@ void InitZombie(Zombie zombie[], int size)
     for(int i = 0; i < size; i++)
     {
         zombie[i].ID = ENERGY;
-        zombie[i].speed = 10;
+        zombie[i].speed = 1;
         zombie[i].live = false;
         zombie[i].life = 100;
         zombie[i].boundx = 50;
@@ -729,7 +736,7 @@ void StartZombie(Zombie zombie[], int size)
 {
     for(int k = 0; k < size; k++)
         if(!zombie[k].live)
-            if(rand() % 500 == 0)
+            if(rand() % dificuldade == 0)
             {
                 zombie[k].live = true;
                 zombie[k].x = WIDTH;
