@@ -15,7 +15,8 @@ const int NUM_BULLETS = 60;
 const int NUM_ENERGYS = 60;
 const int NUM_HEAT = 60;
 const int NUM_BATTERY = 4;
-const int NUM_ZOMBIES = 10;
+int NUM_ZOMBIES = 10;
+int NUM_SPEC_ZOMBIES = 6;
 const int DISTANCIAYZONE = 120;
 const int ZONEX = WIDTH/COLUNAS;
 const int ZONEY = (HEIGHT-DISTANCIAYZONE)/LINHAS;
@@ -28,22 +29,25 @@ int timer_battery_speed;
 int timer_energy_cap_death;
 int timer_zombie_start;
 int timer_zombie_speed;
+int timer_spec_zombie_speed;
 int timer_collide_diodo;
 int timer_collide_diversos;
 int timer_stop_zombie;
+int state = MENU;
+
 
 void InitGamer(Gamer &gamer);
 
 void InitZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS);
 void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, ALLEGRO_BITMAP *resistor, ALLEGRO_BITMAP *capacitor, ALLEGRO_BITMAP *indutor, ALLEGRO_BITMAP *diodo);
-void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize);
+void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize, Zombie SpecZombie[], int dSize);
 void CollideZoneDiodo(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize);
 
 void InitBullet(Bullet bullet[], int size);
 void DrawBullet(Bullet bullet[], int size, ALLEGRO_BITMAP *ataque_eletromagnetico);
 void FireBullet(Bullet bullet[], int size, Zone zone[][COLUNAS]);
 void UpdateBullet(Bullet bullet[], int size);
-void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer);
+void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer, Zombie SpecZombie[], int dSize);
 
 void InitEnergy(Energy energy[], int size);
 void DrawEnergy(Energy energy[], int size, ALLEGRO_BITMAP *energia_capacitor);
@@ -58,6 +62,11 @@ void InitZombie(Zombie zombie[], int size);
 void DrawZombie(Zombie zombie[], int size, ALLEGRO_BITMAP *zombie_bitmap);
 void StartZombie(Zombie zombie[], int size);
 void UpdateZombie(Zombie zombie[], int size);
+
+void InitSpecZombie(Zombie SpecZombie[], int size);
+void DrawSpecZombie(Zombie SpecZombie[], int size, ALLEGRO_BITMAP *zombie_bitmap_spec);
+void StartSpecZombie(Zombie SpecZombie[], int size);
+void UpdateSpecZombie(Zombie SpecZombie[], int size);
 
 void InitBattery(Battery battery[], int size);
 void DrawBattery(Battery battery[], int size, ALLEGRO_BITMAP *bateria);
@@ -87,9 +96,10 @@ int main(void)
     Energy energy[NUM_ENERGYS+1];
     Heat heats[NUM_HEAT+1];
     Zombie zombie[NUM_ZOMBIES];
+    Zombie SpecZombie[NUM_SPEC_ZOMBIES];
     Battery battery[NUM_BATTERY];
 
-    int state = MENU;
+
 
     ALLEGRO_DISPLAY *display = NULL;
     ALLEGRO_EVENT_QUEUE *event_queue = NULL;
@@ -105,6 +115,8 @@ int main(void)
     ALLEGRO_BITMAP *zombie_bitmap = NULL;
     ALLEGRO_BITMAP *ataque_eletromagnetico = NULL;
     ALLEGRO_BITMAP *energia_capacitor = NULL;
+    ALLEGRO_BITMAP *zombie_bitmap_spec = NULL;
+    ALLEGRO_BITMAP *logo = NULL;
 
 
     if(!al_init())										//initialize Allegro
@@ -132,6 +144,8 @@ int main(void)
     zombie_bitmap = al_load_bitmap("Zombie.png");
     ataque_eletromagnetico = al_load_bitmap("eletromagnetismo.jpg");
     energia_capacitor = al_load_bitmap("energia_capacitor.png");
+    zombie_bitmap_spec = al_load_bitmap("zombie_especial.gif");
+    logo = al_load_bitmap("logo_EvsZ.jpg");
 
     al_convert_mask_to_alpha(resistor, al_map_rgb(255, 0, 255));
     al_convert_mask_to_alpha(capacitor, al_map_rgb(255, 0, 255));
@@ -140,6 +154,7 @@ int main(void)
     al_convert_mask_to_alpha(bateria, al_map_rgb(255, 0, 255));
     al_convert_mask_to_alpha(zombie_bitmap, al_map_rgb(255, 255, 255));
     al_convert_mask_to_alpha(ataque_eletromagnetico, al_map_rgb(255, 255, 255));
+    al_convert_mask_to_alpha(zombie_bitmap_spec, al_map_rgb(255, 0, 255));
 
 
     event_queue = al_create_event_queue();
@@ -150,6 +165,7 @@ int main(void)
     InitBullet(bullets, NUM_BULLETS+1);
     InitHeat(heats, NUM_HEAT+1);
     InitZombie(zombie, NUM_ZOMBIES);
+    InitSpecZombie(SpecZombie, NUM_SPEC_ZOMBIES);
     InitEnergy(energy, NUM_ENERGYS+1);
     InitBattery(battery, NUM_BATTERY);
 
@@ -166,247 +182,304 @@ int main(void)
     while(!done)
     {
         ALLEGRO_EVENT ev;
-
-        al_wait_for_event(event_queue, &ev);
-
-        if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+/*===============================================================================================================================================*/
+        if(state == MENU)
         {
-            done = true;
-        }
-        if(ev.type == ALLEGRO_EVENT_TIMER)
-        {
-            redraw = true;
+            al_wait_for_event(event_queue, &ev);
 
+            al_draw_bitmap(logo, WIDTH / 2 - 145, HEIGHT - 500, 0);
+            al_draw_text(font18, al_map_rgb(255, 255, 255), WIDTH / 2, HEIGHT / 2, ALLEGRO_ALIGN_CENTRE, "Os Zombies querem roubar seu diploma, proteja-o");
+            al_draw_text(font18, al_map_rgb(0, 255, 255), WIDTH / 2, HEIGHT / 2 + 100, ALLEGRO_ALIGN_CENTRE, "Pressione Space para jogar");
+            if(ev.type == ALLEGRO_EVENT_KEY_DOWN)
+                if(ev.keyboard.keycode == ALLEGRO_KEY_SPACE)
+                    state = PLAYING;
 
-            for(int i = 0; i < LINHAS; i++)
-                for(int j=0; j<COLUNAS; j++)
-                    if(zone[i][j].x < pos_x &&
-                            zone[i][j].x + ZONEX > pos_x &&
-                            zone[i][j].y < pos_y &&
-                            zone[i][j].y + ZONEY > pos_y)
-                        if(desenha)
-                            if(zone[i][j].draw == 0)
-                            {
-                                if(keys[KEY_1] && gamer.energy >= 100)
-                                {
-                                    zone[i][j].draw = draw[1];
-                                    gamer.energy -=100;
-                                    draw[1] = 0;
-                                }
-                                if(keys[KEY_2] && gamer.energy >= 50)
-                                {
-                                    zone[i][j].draw = draw[2];
-                                    gamer.energy -=50;
-                                    draw[2] = 0;
-                                }
-                                if(keys[KEY_3] && gamer.energy >= 100)
-                                {
-                                    zone[i][j].draw = draw[3];
-                                    gamer.energy -=100;
-                                    draw[3] = 0;
-                                }
-                                if(keys[KEY_4] && gamer.energy >= 100)
-                                {
-                                    zone[i][j].draw = draw[4];
-                                    gamer.energy -=100;
-                                    draw[4] = 0;
-                                }
-                            }
-            timer_battery_speed++;
-            timer_battery_start++;
-            if(timer_battery_start >= 300) // diminui a frequencia com que nasce uma bateria nova
-            {
-                StartBattery(battery, NUM_BATTERY);
-                timer_battery_start = 0;
-            }
-
-            if(timer_battery_speed >= 2) // reduz um pouco a velocidade da bateria
-            {
-                UpdateBattery(battery, NUM_BATTERY);
-                timer_battery_speed = 0;
-            }
-
-
-            timer_heats++;
-
-            for(int i=0; i<LINHAS; i++)
-                for(int j=0; j<COLUNAS; j++)
-                    if(zone[i][j].draw == 1)
-                        if(timer_heats >= 200) // faz os Electronics atirarem numa velocidade constante
-                        {
-                            FireHeat(heats, NUM_HEAT+1, zone);
-                            timer_heats = 0;
-                        }
-
-            timer_energy++;
-            timer_energy_cap_death++;
-
-            for(int i=0; i<LINHAS; i++)
-                for(int j=0; j<COLUNAS; j++)
-                    if(zone[i][j].draw == 2)
-                    {
-                        if(timer_energy >= 240) // faz os Electronics atirarem numa velocidade constante
-                        {
-                            CreateEnergy(energy, NUM_ENERGYS+1, zone);
-                            timer_energy = 0;
-                        }
-
-                    }
-
-            timer_tiros++;
-
-            for(int i=0; i<LINHAS; i++)
-                for(int j=0; j<COLUNAS; j++)
-                    if(zone[i][j].draw == 3)
-                        if(timer_tiros >= 200) // faz os Electronics atirarem numa velocidade constante
-                        {
-                            FireBullet(bullets, NUM_BULLETS+1, zone);
-                            timer_tiros = 0;
-                        }
-            timer_zombie_start++;
-            timer_zombie_speed++;
-            if(timer_zombie_start >= 3)
-            {
-                StartZombie(zombie, NUM_ZOMBIES);
-                timer_zombie_start = 0;
-            }
-            if(timer_zombie_speed >= 4)
-            {
-                UpdateZombie(zombie, NUM_ZOMBIES);
-                timer_zombie_speed = 0;
-            }
-
-
-            timer_collide_diversos++;
-
-
-            UpdateBullet(bullets, NUM_BULLETS+1);
-            CollideBullet(bullets, NUM_BULLETS, zombie, NUM_ZOMBIES, gamer);
-            CollideHeat(heats, NUM_HEAT, zombie, NUM_ZOMBIES, gamer, timer_tamenho_heat);
-            CollideZone(zone, LINHAS, COLUNAS, zombie, NUM_ZOMBIES);
-            CollideZoneDiodo(zone, LINHAS, COLUNAS, zombie, NUM_ZOMBIES);
-
-
-            for(int i = 0; i < NUM_ENERGYS; i++)
-                if(energy[i].live)
-                    if(energy[i].x - energy[i].boundx < pos_x &&
-                            energy[i].x + energy[i].boundx > pos_x &&
-                            energy[i].y - energy[i].boundy < pos_y &&
-                            energy[i].y + energy[i].boundy > pos_y)
-                    {
-                        energy[i].live = false;
-                        gamer.energy += 25;
-                    }
-        }
-        else if(ev.type == ALLEGRO_EVENT_KEY_DOWN)
-        {
-            switch(ev.keyboard.keycode)
-            {
-            case ALLEGRO_KEY_ESCAPE:
+            if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
                 done = true;
-                break;
-            case ALLEGRO_KEY_1:
-                keys[KEY_1] = true;
-                break;
-            case ALLEGRO_KEY_2:
-                keys[KEY_2] = true;
-                break;
-            case ALLEGRO_KEY_3:
-                keys[KEY_3] = true;
-                break;
-            case ALLEGRO_KEY_4:
-                keys[KEY_4] = true;
-                break;
-            }
+
+            al_flip_display();
+
         }
-        else if(ev.type == ALLEGRO_EVENT_KEY_UP)
+/*===============================================================================================================================================*/
+        if(state == PLAYING)
         {
-            switch(ev.keyboard.keycode)
+            al_wait_for_event(event_queue, &ev);
+
+            if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+                done = true;
+
+            if(ev.type == ALLEGRO_EVENT_TIMER)
             {
-            case ALLEGRO_KEY_ESCAPE:
-                done = true;
-                break;
-            case ALLEGRO_KEY_1:
-                keys[KEY_1] = false;
-                break;
-            case ALLEGRO_KEY_2:
-                keys[KEY_2] = false;
-                break;
-            case ALLEGRO_KEY_3:
-                keys[KEY_3] = false;
-                break;
-            case ALLEGRO_KEY_4:
-                keys[KEY_4] = false;
-                break;
-            }
-        }
-        else if(ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
-        {
-            if(ev.mouse.button & 1)
-                desenha = !desenha;
-            else if (ev.mouse.button & 2)
-                done = true;
-        }
-        else if(ev.type == ALLEGRO_EVENT_MOUSE_AXES)
-        {
-            pos_x = ev.mouse.x;
-            pos_y = ev.mouse.y;
-            CaptureBattery(battery, NUM_BATTERY, ev.mouse.x, ev.mouse.y, gamer);
-        }
+                redraw = true;
 
-        timer_componente++;
-
-        if(timer_componente >= 120) // faz os Electronics atirarem numa velocidade constante
-        {
-            if(keys[KEY_1])
-                draw[1] = 1;
-            if(keys[KEY_2])
-                draw[2] = 2;
-            if(keys[KEY_3])
-                draw[3] = 3;
-            if(keys[KEY_4])
-                draw[4] = 4;
-        }
-
-        if(redraw && al_is_event_queue_empty(event_queue))
-        {
-            redraw = false;
-
-
-            DrawZone(zone, LINHAS, COLUNAS, resistor, capacitor, indutor, diodo);
-            DrawBullet(bullets, NUM_BULLETS+1, ataque_eletromagnetico);
-            DrawEnergy(energy, NUM_ENERGYS+1, energia_capacitor);
-            DrawZombie(zombie, NUM_ZOMBIES, zombie_bitmap);
-            DrawBattery(battery, NUM_BATTERY, bateria);
-            timer_tamenho_heat++;
-            DrawHeat(heats, NUM_HEAT+1, timer_tamenho_heat, fogo);
-            if(timer_tamenho_heat > 80)
-                for(int i=0; i<NUM_HEAT; i++)
+                if(state == PLAYING)
+                    for(int i = 0; i < LINHAS; i++)
+                        for(int j=0; j<COLUNAS; j++)
+                            if(zone[i][j].x < pos_x &&
+                                    zone[i][j].x + ZONEX > pos_x &&
+                                    zone[i][j].y < pos_y &&
+                                    zone[i][j].y + ZONEY > pos_y)
+                                if(desenha)
+                                    if(zone[i][j].draw == 0)
+                                    {
+                                        if(keys[KEY_1] && gamer.energy >= 100)
+                                        {
+                                            zone[i][j].draw = draw[1];
+                                            gamer.energy -=100;
+                                            draw[1] = 0;
+                                        }
+                                        if(keys[KEY_2] && gamer.energy >= 50)
+                                        {
+                                            zone[i][j].draw = draw[2];
+                                            gamer.energy -=50;
+                                            draw[2] = 0;
+                                        }
+                                        if(keys[KEY_3] && gamer.energy >= 100)
+                                        {
+                                            zone[i][j].draw = draw[3];
+                                            gamer.energy -=100;
+                                            draw[3] = 0;
+                                        }
+                                        if(keys[KEY_4] && gamer.energy >= 100)
+                                        {
+                                            zone[i][j].draw = draw[4];
+                                            gamer.energy -=100;
+                                            draw[4] = 0;
+                                        }
+                                    }
+                timer_battery_speed++;
+                timer_battery_start++;
+                if(timer_battery_start >= 300) // diminui a frequencia com que nasce uma bateria nova
                 {
-                    heats[i].live = false;
-                    timer_tamenho_heat = 0;
+                    StartBattery(battery, NUM_BATTERY);
+                    timer_battery_start = 0;
+                }
+
+                if(timer_battery_speed >= 2) // reduz um pouco a velocidade da bateria
+                {
+                    UpdateBattery(battery, NUM_BATTERY);
+                    timer_battery_speed = 0;
                 }
 
 
-            al_draw_filled_rectangle(pos_x, pos_y, pos_x + 10, pos_y + 10, al_map_rgb(0, 0, 0));
-            count++;
-            al_draw_textf(font18, al_map_rgb(255, 0, 0), WIDTH*13/16, 85, 0, "Time: %i", count/60);
-            al_draw_textf(font18, al_map_rgb(255, 0, 0), WIDTH*13/20, 85, 0, "Energy: %i", gamer.energy);
+                timer_heats++;
+
+                for(int i=0; i<LINHAS; i++)
+                    for(int j=0; j<COLUNAS; j++)
+                        if(zone[i][j].draw == 1)
+                            if(timer_heats >= 200) // faz os Electronics atirarem numa velocidade constante
+                            {
+                                FireHeat(heats, NUM_HEAT+1, zone);
+                                timer_heats = 0;
+                            }
+
+                timer_energy++;
+                timer_energy_cap_death++;
+
+                for(int i=0; i<LINHAS; i++)
+                    for(int j=0; j<COLUNAS; j++)
+                        if(zone[i][j].draw == 2)
+                        {
+                            if(timer_energy >= 240) // faz os Electronics atirarem numa velocidade constante
+                            {
+                                CreateEnergy(energy, NUM_ENERGYS+1, zone);
+                                timer_energy = 0;
+                            }
+
+                        }
+
+                timer_tiros++;
+
+                for(int i=0; i<LINHAS; i++)
+                    for(int j=0; j<COLUNAS; j++)
+                        if(zone[i][j].draw == 3)
+                            if(timer_tiros >= 200) // faz os Electronics atirarem numa velocidade constante
+                            {
+                                FireBullet(bullets, NUM_BULLETS+1, zone);
+                                timer_tiros = 0;
+                            }
+                timer_zombie_start++;
+                timer_zombie_speed++;
+                if(timer_zombie_start >= 3)
+                {
+                    StartZombie(zombie, NUM_ZOMBIES);
+                    timer_zombie_start = 0;
+                }
+                if(timer_zombie_speed >= 4)
+                {
+                    UpdateZombie(zombie, NUM_ZOMBIES);
+                    timer_zombie_speed = 0;
+                }
+                if((count/60) >= 5)
+                {
+                    timer_spec_zombie_speed++;
+                    StartSpecZombie(SpecZombie, NUM_SPEC_ZOMBIES);
+                    if(timer_spec_zombie_speed >= 4)
+                    {
+                        UpdateSpecZombie(SpecZombie, NUM_SPEC_ZOMBIES);
+                        timer_spec_zombie_speed = 0;
+                    }
+
+                }
+
+                UpdateBullet(bullets, NUM_BULLETS+1);
+                CollideBullet(bullets, NUM_BULLETS, zombie, NUM_ZOMBIES, gamer, SpecZombie, NUM_SPEC_ZOMBIES);
+                CollideHeat(heats, NUM_HEAT, zombie, NUM_ZOMBIES, gamer, timer_tamenho_heat);
+                CollideZone(zone, LINHAS, COLUNAS, zombie, NUM_ZOMBIES, SpecZombie, NUM_SPEC_ZOMBIES);
+                CollideZoneDiodo(zone, LINHAS, COLUNAS, zombie, NUM_ZOMBIES);
+
+
+                for(int i = 0; i < NUM_ENERGYS; i++)
+                    if(energy[i].live)
+                        if(energy[i].x - energy[i].boundx < pos_x &&
+                                energy[i].x + energy[i].boundx > pos_x &&
+                                energy[i].y - energy[i].boundy < pos_y &&
+                                energy[i].y + energy[i].boundy > pos_y)
+                        {
+                            energy[i].live = false;
+                            gamer.energy += 25;
+                        }
+
+
+            }
+            else if(ev.type == ALLEGRO_EVENT_KEY_DOWN)
+            {
+                switch(ev.keyboard.keycode)
+                {
+                case ALLEGRO_KEY_ESCAPE:
+                    done = true;
+                    break;
+                case ALLEGRO_KEY_1:
+                    keys[KEY_1] = true;
+                    break;
+                case ALLEGRO_KEY_2:
+                    keys[KEY_2] = true;al_draw_text(font18, al_map_rgb(255, 255, 255), WIDTH / 2, HEIGHT / 2, ALLEGRO_ALIGN_CENTRE, "Press Space to Play");
+
+                    break;
+                case ALLEGRO_KEY_3:
+                    keys[KEY_3] = true;
+                    break;
+                case ALLEGRO_KEY_4:
+                    keys[KEY_4] = true;
+                    break;
+                }
+            }
+            else if(ev.type == ALLEGRO_EVENT_KEY_UP)
+            {
+                switch(ev.keyboard.keycode)
+                {
+                case ALLEGRO_KEY_ESCAPE:
+                    done = true;
+                    break;
+                case ALLEGRO_KEY_1:
+                    keys[KEY_1] = false;
+                    break;
+                case ALLEGRO_KEY_2:
+                    keys[KEY_2] = false;
+                    break;
+                case ALLEGRO_KEY_3:
+                    keys[KEY_3] = false;
+                    break;
+                case ALLEGRO_KEY_4:
+                    keys[KEY_4] = false;
+                    break;
+                }
+            }
+            else if(ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
+            {
+                if(ev.mouse.button & 1)
+                    desenha = !desenha;
+                else if (ev.mouse.button & 2)
+                    done = true;
+            }
+            else if(ev.type == ALLEGRO_EVENT_MOUSE_AXES)
+            {
+                pos_x = ev.mouse.x;
+                pos_y = ev.mouse.y;
+                CaptureBattery(battery, NUM_BATTERY, ev.mouse.x, ev.mouse.y, gamer);
+            }
+
+            timer_componente++;
+
+            if(timer_componente >= 120) // faz os Electronics atirarem numa velocidade constante
+            {
+                if(keys[KEY_1])
+                    draw[1] = 1;
+                if(keys[KEY_2])
+                    draw[2] = 2;
+                if(keys[KEY_3])
+                    draw[3] = 3;
+                if(keys[KEY_4])
+                    draw[4] = 4;
+            }
+
+            if(redraw && al_is_event_queue_empty(event_queue))
+            {
+                redraw = false;
+
+
+                DrawZone(zone, LINHAS, COLUNAS, resistor, capacitor, indutor, diodo);
+                DrawBullet(bullets, NUM_BULLETS+1, ataque_eletromagnetico);
+                DrawEnergy(energy, NUM_ENERGYS+1, energia_capacitor);
+                DrawZombie(zombie, NUM_ZOMBIES, zombie_bitmap);
+                DrawSpecZombie(SpecZombie, NUM_SPEC_ZOMBIES, zombie_bitmap_spec);
+                DrawBattery(battery, NUM_BATTERY, bateria);
+                timer_tamenho_heat++;
+                DrawHeat(heats, NUM_HEAT+1, timer_tamenho_heat, fogo);
+                if(timer_tamenho_heat > 80)
+                    for(int i=0; i<NUM_HEAT; i++)
+                    {
+                        heats[i].live = false;
+                        timer_tamenho_heat = 0;
+                    }
+
+
+                al_draw_filled_rectangle(pos_x, pos_y, pos_x + 10, pos_y + 10, al_map_rgb(0, 0, 0));
+                count++;
+                al_draw_textf(font18, al_map_rgb(255, 0, 0), WIDTH*13/16, 85, 0, "Time: %i", count/60);
+                al_draw_textf(font18, al_map_rgb(255, 0, 0), WIDTH*13/300, 85, 0, "Energy: %i", gamer.energy);
+                al_draw_textf(font18, al_map_rgb(255, 0, 0), WIDTH*13/25, 85, 0, "Score: %i", gamer.score);
+                al_flip_display();
+                al_draw_bitmap(protoboard, 0, 0, 0);
+            }
+
+        }
+    /*================================================================================================================================================*/
+        if(state == GAMEOVER)
+        {
+            al_wait_for_event(event_queue, &ev);
+            al_clear_to_color(al_map_rgb(0,0,0));
+            al_draw_text(font18, al_map_rgb(255, 168, 255), WIDTH / 2, HEIGHT / 2, ALLEGRO_ALIGN_CENTRE, "Os Zombies roubaram seu diploma");
+            al_draw_text(font18, al_map_rgb(255, 255, 255), WIDTH / 2, HEIGHT / 2 +40, ALLEGRO_ALIGN_CENTRE, "Pressione Space para sair");
             al_flip_display();
-            al_draw_bitmap(protoboard, 0, 0, 0);
+
+            if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+                done = true;
+
+            if(ev.type == ALLEGRO_EVENT_KEY_DOWN)
+                if(ev.keyboard.keycode == ALLEGRO_KEY_SPACE)
+            {
+                al_destroy_event_queue(event_queue);
+                al_destroy_timer(timer);
+                al_destroy_font(font18);
+                al_destroy_bitmap(resistor);
+                al_destroy_bitmap(capacitor);
+                al_destroy_bitmap(indutor);
+                al_destroy_bitmap(diodo);
+                al_destroy_bitmap(bateria);
+                al_destroy_bitmap(protoboard);
+                al_destroy_bitmap(zombie_bitmap);
+                al_destroy_bitmap(zombie_bitmap_spec);
+                al_destroy_display(display);
+
+            }
+
+
+
+
         }
     }
 
-    al_destroy_event_queue(event_queue);
-    al_destroy_timer(timer);
-    al_destroy_font(font18);
-    al_destroy_bitmap(resistor);
-    al_destroy_bitmap(capacitor);
-    al_destroy_bitmap(indutor);
-    al_destroy_bitmap(diodo);
-    al_destroy_bitmap(bateria);
-    al_destroy_bitmap(protoboard);
-    al_destroy_display(display);						//destroy our display object
 
     return 0;
 }
@@ -450,21 +523,34 @@ void DrawZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, ALLEGRO_BITMAP *res
                 al_draw_bitmap(diodo, zone[i][j].x+1, zone[i][j].y+10, 0);
         }
 }
-void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize)
+void CollideZone(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize, Zombie SpecZombie[], int dSize)
 {
     for(int i = 0; i < LINHAS; i++)
         for(int j = 0; j < COLUNAS; j++)
             for(int k = 0; k < cSize; k++)
+            {
                 if(zombie[k].live)
                     if(zone[i][j].x + ZONEX/2 > (zombie[k].x - zombie[k].boundx) &&
                             zone[i][j].x + ZONEX/2 < (zombie[k].x + zombie[k].boundx) &&
                             zone[i][j].y + ZONEY/2 > (zombie[k].y - zombie[k].boundy) &&
                             zone[i][j].y + ZONEY/2 < (zombie[k].y + zombie[k].boundy))
+
                     {
                         if((zone[i][j].draw >= 1) && (zone[i][j].draw <= 3))
                             zone[i][j].draw = 0;
 
                     }
+                for(int h = 0; h < dSize; h++)
+                    if((zone[i][j].x + ZONEX/2 > (SpecZombie[h].x - SpecZombie[h].boundx) &&
+                            zone[i][j].x + ZONEX/2 < (SpecZombie[h].x + SpecZombie[h].boundx) &&
+                            zone[i][j].y + ZONEY/2 > (SpecZombie[h].y - SpecZombie[h].boundy) &&
+                            zone[i][j].y + ZONEY/2 < (SpecZombie[h].y + SpecZombie[h].boundy)
+                       ))
+                    {
+                        if((zone[i][j].draw >= 1) && (zone[i][j].draw <= 3))
+                            zone[i][j].draw = 0;
+                    }
+            }
 
 }
 void CollideZoneDiodo(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zombie[], int cSize)
@@ -480,16 +566,16 @@ void CollideZoneDiodo(Zone zone[][COLUNAS], int LINHAS, int COLUNAS, Zombie zomb
                             zone[i][j].y + ZONEY/2 < (zombie[k].y + zombie[k].boundy))
                         if(zone[i][j].draw == 4)
                         {
-                                zombie[k].speed = 0;
-                                timer_collide_diodo++;
-                                if(timer_collide_diodo >= 600)
-                                    {
-                                        zone[i][j].draw = 0;
-                                        for(int c = 0; c < cSize; c++)
-                                            zombie[c].speed = 1;
+                            zombie[k].speed = 0;
+                            timer_collide_diodo++;
+                            if(timer_collide_diodo >= 600)
+                            {
+                                zone[i][j].draw = 0;
+                                for(int c = 0; c < cSize; c++)
+                                    zombie[c].speed = 1;
 
-                                        timer_collide_diodo = 0;
-                                    }
+                                timer_collide_diodo = 0;
+                            }
 
                         }
             }
@@ -539,11 +625,12 @@ void UpdateBullet(Bullet bullet[], int size)
         }
 }
 
-void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer)
+void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer &gamer, Zombie SpecZombie[], int dSize)
 {
     for(int i = 0; i < bSize; i++)
         if(bullet[i].live)
             for(int j =0; j < cSize; j++)
+            {
                 if(zombie[j].live)
                     if(bullet[i].x > (zombie[j].x - zombie[j].boundx) &&
                             bullet[i].x < (zombie[j].x + zombie[j].boundx) &&
@@ -558,6 +645,25 @@ void CollideBullet(Bullet bullet[], int bSize, Zombie zombie[], int cSize, Gamer
 
                         gamer.score++;
                     }
+                for(int k = 0; k < dSize; k++)
+                    for(int h = 0; h < bSize; h++)
+                    {
+                        if(SpecZombie[k].live)
+                            if(bullet[h].x > (SpecZombie[k].x - SpecZombie[k].boundx) &&
+                                    bullet[h].x < (SpecZombie[k].x + SpecZombie[k].boundx) &&
+                                    bullet[h].y > (SpecZombie[k].y - SpecZombie[k].boundy) &&
+                                    bullet[h].y < (SpecZombie[k].y + SpecZombie[k].boundy))
+                            {
+                                SpecZombie[k].life -= 25;
+                                bullet[h].live = false;
+
+
+                                if(SpecZombie[k].life <= 0)
+                                    SpecZombie[k].live = false;
+                            }
+
+                    }
+            }
 }
 
 void InitEnergy(Energy energy[], int size)
@@ -680,11 +786,52 @@ void StartZombie(Zombie zombie[], int size)
 void UpdateZombie(Zombie zombie[], int size)
 {
     for(int i = 0; i < size; i++)
+    {
         if(zombie[i].live)
-        {
             zombie[i].x -= zombie[i].speed;
-        }
+        if(zombie[i].x <=0)
+            state = GAMEOVER;
+    }
 
+}
+void InitSpecZombie(Zombie SpecZombie[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        SpecZombie[i].ID = ENEMY;
+        SpecZombie[i].live = false;
+        SpecZombie[i].speed = 2;
+        SpecZombie[i].life = 150;
+        SpecZombie[i].boundx = 50;
+        SpecZombie[i].boundy = 5;
+
+    }
+}
+void DrawSpecZombie(Zombie SpecZombie[], int size, ALLEGRO_BITMAP *zombie_bitmap_spec)
+{
+    for(int i = 0; i < size; i++)
+        if(SpecZombie[i].live)
+            al_draw_bitmap(zombie_bitmap_spec, SpecZombie[i].x, SpecZombie[i].y-40, 0);
+}
+void StartSpecZombie(Zombie SpecZombie[], int size)
+{
+    for(int k = 0; k < size; k++)
+        if(!SpecZombie[k].live)
+            if(rand() % 500 == 0)
+            {
+                SpecZombie[k].live = true;
+                SpecZombie[k].x = WIDTH;
+                SpecZombie[k].y = DISTANCIAYZONE +ZONEY/2 + (rand() % LINHAS)*ZONEY;
+                break;
+            }
+}
+void UpdateSpecZombie(Zombie SpecZombie[], int size)
+{
+    for(int i = 0; i < size; i++)
+        if(SpecZombie[i].live)
+        {
+            SpecZombie[i].x -= SpecZombie[i].speed;
+        }
 }
 void InitBattery(Battery battery[], int size)
 {
@@ -750,4 +897,5 @@ void CaptureBattery(Battery battery[], int size, float mouse_x, float mouse_y, G
 
     }
 }
+
 
