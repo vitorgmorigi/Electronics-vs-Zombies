@@ -94,11 +94,11 @@ int main(void)
     Battery battery[NUM_BATTERY];
 
 
-
     ALLEGRO_DISPLAY *display = NULL;
     ALLEGRO_EVENT_QUEUE *event_queue = NULL;
     ALLEGRO_TIMER *timer = NULL;
     ALLEGRO_FONT *font18 = NULL;
+    ALLEGRO_FONT *font_maior = NULL;
     ALLEGRO_BITMAP *resistor = NULL;
     ALLEGRO_BITMAP *capacitor = NULL;
     ALLEGRO_BITMAP *indutor = NULL;
@@ -160,6 +160,7 @@ int main(void)
     InitBattery(battery, NUM_BATTERY);
 
     font18 = al_load_font("arial.ttf", 18, 0);
+    font_maior = al_load_font("arial.ttf", 24, 0);
 
     al_register_event_source(event_queue, al_get_mouse_event_source());
     al_register_event_source(event_queue, al_get_keyboard_event_source());
@@ -180,6 +181,7 @@ int main(void)
             al_draw_bitmap(logo, WIDTH / 2 - 145, HEIGHT - 500, 0);
             al_draw_text(font18, al_map_rgb(255, 255, 255), WIDTH / 2, HEIGHT / 2, ALLEGRO_ALIGN_CENTRE, "Os Zombies querem roubar seu diploma, proteja-o");
             al_draw_text(font18, al_map_rgb(0, 255, 255), WIDTH / 2, HEIGHT / 2 + 100, ALLEGRO_ALIGN_CENTRE, "Pressione Space para jogar");
+            al_draw_text(font_maior, al_map_rgb(0, 255, 0), WIDTH / 2, HEIGHT / 2 + 150, ALLEGRO_ALIGN_CENTRE, "Tecla 1 = Resistor Tecla 2 = Capacitor  Tecla 3 = Indutor  Tecla 4 = Diodo");
             if(ev.type == ALLEGRO_EVENT_KEY_DOWN)
                 if(ev.keyboard.keycode == ALLEGRO_KEY_SPACE)
                     state = PLAYING;
@@ -202,7 +204,7 @@ int main(void)
             {
                 redraw = true;
 
-                if(state == PLAYING)
+
                     for(int i = 0; i < LINHAS; i++)
                         for(int j=0; j<COLUNAS; j++)
                             if(zone[i][j].x < pos_x &&
@@ -239,7 +241,7 @@ int main(void)
                                     }
                 timer_battery_speed++;
                 timer_battery_start++;
-                if(timer_battery_start >= 300) // diminui a frequencia com que nasce uma bateria nova
+                if(timer_battery_start >= 360) // diminui a frequencia com que nasce uma bateria nova
                 {
                     StartBattery(battery, NUM_BATTERY);
                     timer_battery_start = 0;
@@ -257,7 +259,7 @@ int main(void)
                 for(int i=0; i<LINHAS; i++)
                     for(int j=0; j<COLUNAS; j++)
                         if(zone[i][j].draw == 1)
-                            if(timer_heats >= 200) // faz os Electronics atirarem numa velocidade constante
+                            if(timer_heats >= 200)
                             {
                                 FireHeat(heats, NUM_HEAT+1, zone);
                                 timer_heats = 0;
@@ -270,7 +272,7 @@ int main(void)
                     for(int j=0; j<COLUNAS; j++)
                         if(zone[i][j].draw == 2)
                         {
-                            if(timer_energy >= 240) // faz os Electronics atirarem numa velocidade constante
+                            if(timer_energy >= 360)
                             {
                                 CreateEnergy(energy, NUM_ENERGYS+1, zone);
                                 timer_energy = 0;
@@ -430,6 +432,7 @@ int main(void)
             al_clear_to_color(al_map_rgb(0,0,0));
             al_draw_text(font18, al_map_rgb(255, 168, 255), WIDTH / 2, HEIGHT / 2, ALLEGRO_ALIGN_CENTRE, "Os Zombies roubaram seu diploma");
             al_draw_text(font18, al_map_rgb(255, 255, 255), WIDTH / 2, HEIGHT / 2 +40, ALLEGRO_ALIGN_CENTRE, "Pressione Space para sair");
+            al_draw_textf(font_maior, al_map_rgb(255, 0, 0), WIDTH*13/28, 85, 0, "Score: %i", gamer.score);
             al_flip_display();
 
             if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
@@ -465,7 +468,7 @@ int main(void)
 void InitGamer(Gamer &gamer)
 {
     gamer.ID = PLAYER;
-    gamer.energy = 200;
+    gamer.energy = 50;
     gamer.lives = 2;
     gamer.score = 0;
 }
@@ -707,7 +710,7 @@ void InitZombie(Zombie zombie[], int size)
     for(int i = 0; i < size; i++)
     {
         zombie[i].ID = ENERGY;
-        zombie[i].speed = 1;
+        zombie[i].speed = 10;
         zombie[i].live = false;
         zombie[i].life = 100;
         zombie[i].boundx = 50;
